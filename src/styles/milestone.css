@@ -1,0 +1,11 @@
+/* Milestone full-screen moment (MARQUIS_animations.md #8): the most
+   animated moment in the product. Everything else is restrained so this lands. */
+.milestone{ position:fixed; inset:0; z-index:1800; background:rgba(0,0,0,0.85); display:flex; align-items:center; justify-content:center; cursor:pointer; }
+.milestone[hidden]{ display:none; }
+.milestone-box{ text-align:center; max-width:640px; padding:0 24px; }
+.milestone-title{ font-family:var(--font-display); font-weight:300; font-size:var(--fs-display); letter-spacing:.02em; color:var(--ink); margin:14px 0 18px; }
+.milestone-title .ch{ display:inline-block; white-space:pre; }
+.milestone-line{ height:1px; background:var(--gold); width:160px; margin:0 auto 22px; transform-origin:left; }
+.milestone-sub{ font-size:var(--fs-body); color:var(--ink-dim); line-height:1.7; }
+.milestone-timer{ position:absolute; left:0; right:0; bottom:0; height:1px; background:transparent; }
+.milestone-timer span{ display:block; height:100%; width:100%; background:rgba(255,255,255,0.18); transform-origin:left; transform:scaleX(0); }

@@ -1,0 +1,35 @@
+/* ============================================================
+   AUTH (not in v2_1; styled to its tokens). Gold on this screen: the
+   submit button only, the moment of entering.
+   ============================================================ */
+.auth-screen{ position:fixed; inset:0; z-index:1500; display:none; align-items:center; justify-content:center; background:var(--void); }
+.auth-screen.active{ display:flex; }
+.auth-card{ width:380px; max-width:calc(100vw - 48px); }
+.auth-mark{ text-align:center; font-family:var(--font-display); font-size:26px; letter-spacing:.2em; margin-bottom:56px; color:var(--ink); }
+.field{ margin-bottom:24px; }
+.field label{ display:block; font-size:var(--fs-label); letter-spacing:.12em; color:var(--ink-faint); text-transform:uppercase; margin-bottom:8px; }
+.field input{ width:100%; padding:12px 0; background:none; border:none; border-bottom:1px solid var(--hair-strong); font-size:var(--fs-body); color:var(--ink); outline:none; transition:border-color var(--dur-standard) var(--ease-standard); }
+.field input:focus{ border-color:rgba(255,255,255,0.35); }
+.field input::placeholder{ color:var(--ink-faint); }
+.field input.invalid{ border-color:var(--crimson-text); }
+.auth-error{ font-size:var(--fs-small); color:var(--crimson-text); margin-bottom:16px; min-height:18px; opacity:0; transition:opacity var(--dur-standard) var(--ease-standard); }
+.auth-error.show{ opacity:1; }
+.auth-submit{
+  width:100%; padding:14px; border:1px solid var(--gold); border-radius:var(--r-btn); color:var(--gold);
+  font-size:var(--fs-label); letter-spacing:.12em; text-transform:uppercase; margin-top:12px;
+  transition:background var(--dur-standard) var(--ease-standard), border-color var(--dur-standard) var(--ease-standard), transform var(--dur-fast) var(--ease-out);
+}
+.auth-submit:hover{ background:var(--gold-wash); border-color:var(--gold-bright); transform:translateY(-1px); }
+.auth-submit:active{ background:var(--gold-wash-press); transform:translateY(0); }
+.auth-submit:disabled{ opacity:.5; cursor:default; transform:none; }
+.auth-switch{ text-align:center; margin-top:36px; font-size:var(--fs-small); color:var(--ink-faint); }
+.auth-switch button{ color:var(--ink-dim); border-bottom:1px solid var(--hair-strong); padding-bottom:1px; transition:color var(--dur-instant) var(--ease-standard); }
+.auth-switch button:hover{ color:var(--ink); }
+.spinner{ width:14px; height:14px; border-radius:50%; border:1.5px solid rgba(184,150,46,0.25); border-top-color:var(--gold); animation:spin .8s linear infinite; display:inline-block; vertical-align:middle; }
+@keyframes spin{ to{ transform:rotate(360deg); } }
+
+.demo-badge{
+  position:fixed; bottom:14px; right:16px; z-index:1600;
+  font-family:var(--font-mono); font-size:10px; letter-spacing:.12em; text-transform:uppercase;
+  color:var(--ink-faint); pointer-events:none;
+}

@@ -1,0 +1,49 @@
+/* ============================================================
+   CONVERSATION — ported from marquis_v2_1.html
+   ============================================================ */
+.conv-mark{ width:30px; height:18px; opacity:.5; flex-shrink:0; margin:56px 0 0 8px; }
+.conv-scroll{ flex:1; width:100%; overflow-y:auto; padding:40px 8px 30px; }
+.msg{ margin-bottom:34px; max-width:100%; }
+.msg.user{ margin-left:auto; max-width:86%; text-align:right; }
+.msg p{ font-size:15px; line-height:1.7; color:var(--ink); margin-bottom:10px; }
+.msg.user p{ color:var(--ink-dim); }
+.msg time{ display:block; font-family:var(--font-mono); font-size:10.5px; color:var(--ink-faint); }
+.thinking{ display:flex; gap:6px; padding:4px 0 0 2px; }
+/* Thinking (animation #3): 800ms cycle, 0.3 -> 1 -> 0.3, dots 160ms apart. */
+.thinking span{ width:5px; height:5px; border-radius:50%; background:var(--ink-dim); animation:think 800ms ease-in-out infinite; opacity:.3; }
+.thinking span:nth-child(2){ animation-delay:160ms; } .thinking span:nth-child(3){ animation-delay:320ms; }
+@keyframes think{ 0%,100%{opacity:.3;} 50%{opacity:1;} }
+
+.conv-input-bar{ width:100%; padding:12px 8px 30px; } /* no divider: space is the divider (MARQUIS_design.md) */
+.conv-input{ display:flex; align-items:flex-end; gap:10px; background:var(--surface); border:1px solid var(--hair-strong); border-radius:10px; padding:13px 14px; transition:border-color 200ms var(--ease-standard); }
+.conv-input.focused{ border-color:rgba(255,255,255,0.20); }
+.conv-input textarea{ flex:1; resize:none; background:none; border:none; outline:none; color:var(--ink); font-size:15px; line-height:1.6; max-height:120px; font-family:var(--font-body); }
+.conv-input textarea::placeholder{ color:var(--ink-faint); }
+.conv-hint{ font-size:11px; color:var(--ink-faint); margin-top:9px; text-align:center; }
+
+/* Mode switch: Speak | Type */
+.conv-modes{ display:flex; gap:4px; margin-bottom:12px; }
+.conv-modes button{ font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-faint); padding:6px 12px; border-radius:999px; border:1px solid transparent; transition:color 100ms var(--ease-standard), border-color 100ms var(--ease-standard); }
+.conv-modes button:hover{ color:var(--ink-dim); }
+.conv-modes button.on{ color:var(--ink); border-color:var(--hair-strong); }
+.conv-modes button:disabled{ opacity:.35; cursor:default; }
+
+.speak-btn{ width:100%; display:flex; align-items:center; justify-content:center; gap:12px; padding:16px; border-radius:10px; border:1px solid var(--hair-strong); color:var(--ink-dim); font-size:13px; letter-spacing:.12em; text-transform:uppercase; background:var(--surface); transition:color 200ms var(--ease-standard), border-color 200ms var(--ease-standard); }
+.speak-btn svg{ width:18px; height:18px; }
+.speak-btn:hover{ color:var(--ink); border-color:rgba(255,255,255,0.20); }
+.speak-btn.listening{ color:var(--ink); border-color:rgba(255,255,255,0.20); }
+.speak-btn.listening svg{ animation:listen-breathe 2s var(--ease-standard) infinite; }
+@keyframes listen-breathe{ 0%,100%{ opacity:.4; } 50%{ opacity:1; } }
+
+#page-conversation[data-mode="voice"] .conv-input,
+#page-conversation[data-mode="voice"] .conv-hint{ display:none; }
+#page-conversation[data-mode="text"] .conv-voice{ display:none; }
+
+/* Speaking mark: the one gold on the Butler screen, only while it speaks
+   (MARQUIS_animations.md #7: opacity/colour only, 200ms, no slide/scale). */
+.conv-mark .mark-peaks, .conv-mark .mark-path{ transition:stroke 200ms var(--ease-out); }
+.conv-mark{ transition:opacity 200ms var(--ease-out); }
+.conv-mark.speaking{ opacity:1; }
+.conv-mark.speaking .mark-peaks, .conv-mark.speaking .mark-path{ stroke:var(--gold); }
+
+.msg.notice p{ color:var(--ink-dim); font-style:italic; font-family:var(--font-display); font-size:17px; }

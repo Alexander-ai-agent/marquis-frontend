@@ -1,0 +1,25 @@
+/* ============================================================
+   BUTLER — the Living Canvas page (route id: conversation).
+   Canvas (left) shows what the butler is explaining, or the four
+   agents at work when idle; the thread (right) is the conversation.
+   One composition, no borders between them — space is the divider.
+   ============================================================ */
+.butler{
+  height:100%;
+  display:grid;
+  grid-template-columns:minmax(0, 1.5fr) minmax(380px, 1fr);
+}
+.butler-canvas{ min-width:0; min-height:0; padding:64px 48px 56px 72px; position:relative; }
+.butler-thread{ min-width:0; min-height:0; display:flex; flex-direction:column; padding:0 56px 0 32px; }
+
+.butler-canvas-fallback{ height:100%; display:flex; flex-direction:column; }
+.butler-canvas[data-canvas-mounted] .butler-canvas-fallback{ display:none; }
+.bcf-context{ font-family:var(--font-mono); font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-faint); }
+.butler-canvas-fallback p{ margin:auto 0; font-family:var(--font-display); font-style:italic; font-size:24px; color:var(--ink-faint); }
+
+@media (max-width:900px){
+  .butler{ grid-template-columns:1fr; grid-template-rows:42vh minmax(0,1fr); }
+  .butler-canvas{ padding:56px 22px 12px; }
+  .butler-thread{ padding:0 18px; }
+  .conv-mark{ margin-top:12px; }
+}

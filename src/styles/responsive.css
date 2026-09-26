@@ -1,0 +1,13 @@
+/* Loaded LAST in index.html. These rules used to sit in tokens.css, which
+   loads first, so every page stylesheet after it silently overrode them and
+   the phone layout overflowed off-screen (found in the Sep 24 audit). */
+@media (max-width:900px){
+  .hero-row, .stat-row, .quick-row, .an-grid, .ob-grid{ grid-template-columns:1fr; }
+  .dash, .an-wrap{ padding:72px 22px 70px; }
+  .set-wrap, .ob-wrap{ padding-left:22px; padding-right:22px; }
+  .prog-wrap{ padding:72px 22px 40px; }
+  .dash-top{ flex-direction:column; align-items:flex-start; gap:14px; }
+  .dash-clock{ text-align:left; }
+  .intel-row{ flex-direction:column; gap:6px; }
+  .intel-tag{ width:auto; }
+}

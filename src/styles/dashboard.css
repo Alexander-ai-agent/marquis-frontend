@@ -1,0 +1,56 @@
+/* ============================================================
+   DASHBOARD: calm. Base: marquis_v2_1.html structure.
+   Gold on this screen: the phase ring, and nothing else.
+   ============================================================ */
+.dash{ max-width:1180px; margin:0 auto; padding:88px 64px 96px; }
+.dash-top{ display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:48px; }
+/* The page's single display statement (48px Cormorant 300). */
+.dash-greeting{ font-family:var(--font-display); font-weight:300; font-size:var(--fs-display); letter-spacing:.02em; color:var(--ink); line-height:1.1; }
+.dash-sub{ color:var(--ink-dim); font-size:var(--fs-body); line-height:1.7; margin-top:12px; max-width:520px; }
+.dash-clock{ font-family:var(--font-mono); font-size:var(--fs-mono); color:var(--ink-faint); text-align:right; line-height:1.7; }
+.dash-greeting.skeleton, .dash-sub.skeleton{ display:inline-block; }
+
+.dash-row{ margin-bottom:16px; }
+.hero-row{ display:grid; grid-template-columns:1.55fr 1fr; gap:16px; }
+.hero-card{ padding:32px; display:flex; flex-direction:column; gap:16px; }
+.hero-quote{ font-family:var(--font-display); font-size:24px; font-style:italic; color:var(--ink); line-height:1.5; max-width:560px; }
+.hero-meta{ display:flex; align-items:center; gap:16px; margin-top:auto; }
+.hero-time{ font-family:var(--font-mono); font-size:11px; color:var(--ink-faint); }
+
+.ring-card{ padding:28px 24px 24px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; }
+.ring-wrap{ position:relative; width:120px; height:120px; }
+.ring-wrap svg{ width:100%; height:100%; transform:rotate(-90deg); }
+.ring-bg{ fill:none; stroke:var(--hair-strong); stroke-width:3; }
+.ring-fg{ fill:none; stroke:var(--gold); stroke-width:3; stroke-linecap:round; stroke-dasharray:345.6; stroke-dashoffset:345.6; }
+.ring-center{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+.ring-num{ font-family:var(--font-mono); font-size:24px; color:var(--ink); }
+.ring-den{ font-family:var(--font-mono); font-size:11px; color:var(--ink-faint); margin-top:2px; }
+.ring-caption{ font-size:var(--fs-small); color:var(--ink-dim); text-align:center; line-height:1.6; }
+.ring-caption b{ color:var(--ink); font-weight:500; }
+
+.stat-row{ display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+.stat-card{ padding:24px; min-height:128px; }
+.stat-num{ font-family:var(--font-mono); font-size:32px; color:var(--ink); display:flex; align-items:baseline; gap:10px; }
+.stat-num.warn{ color:var(--crimson-text); }
+.trend{ font-size:14px; }
+.trend.up{ color:var(--ink-dim); }       /* not gold: the ring is this screen's one gold */
+.trend.down{ color:var(--crimson-text); }
+.stat-lbl{ font-size:var(--fs-small); color:var(--ink-dim); margin-top:6px; }
+.stat-delta{ font-family:var(--font-mono); font-size:11px; color:var(--ink-faint); margin-top:10px; }
+
+.intel-card{ padding:28px 32px 12px; }
+.intel-title{ font-family:var(--font-body); font-weight:500; font-size:var(--fs-h2); letter-spacing:-.005em; color:var(--ink); }
+.intel-sub{ font-size:var(--fs-small); color:var(--ink-faint); margin:6px 0 16px; }
+.intel-row{ display:flex; gap:24px; align-items:flex-start; padding:16px 0; }
+.intel-row + .intel-row{ border-top:1px solid var(--hair); }
+.intel-tag{ font-size:10px; letter-spacing:.12em; color:var(--ink-faint); text-transform:uppercase; width:170px; flex-shrink:0; padding-top:3px; }
+.intel-text{ font-size:var(--fs-body); color:var(--ink-dim); line-height:1.7; }
+.intel-text b{ color:var(--ink); font-weight:500; }
+.intel-text .flag{ color:var(--crimson-text); }
+
+.quick-row{ display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+.quick-card{ padding:20px 24px; display:flex; align-items:center; justify-content:space-between; text-align:left; }
+.quick-card:hover{ border-color:var(--hair-strong); }
+.quick-h{ font-size:var(--fs-body); color:var(--ink); margin-bottom:3px; }
+.quick-s{ font-size:var(--fs-small); color:var(--ink-faint); }
+.quick-card svg{ width:14px; height:14px; color:var(--ink-faint); flex-shrink:0; }

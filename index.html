@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Marquis</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 200 120%27%3E%3Crect width=%27200%27 height=%27120%27 fill=%27%23030202%27/%3E%3Cpolyline points=%2710,95 42,40 60,72 82,20 105,66 128,34 150,80 190,95%27 fill=%27none%27 stroke=%27%23E9E9EC%27 stroke-width=%278%27 stroke-linejoin=%27round%27/%3E%3C/svg%3E">
+<meta name="description" content="MARQUIS — an AI executive advisor for founders.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,400&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="src/styles/tokens.css">
+<link rel="stylesheet" href="src/styles/layout.css">
+<link rel="stylesheet" href="src/styles/intro.css">
+<link rel="stylesheet" href="src/styles/auth.css">
+<link rel="stylesheet" href="src/styles/onboarding.css">
+<link rel="stylesheet" href="src/styles/dashboard.css">
+<link rel="stylesheet" href="src/styles/conversation.css">
+<link rel="stylesheet" href="src/styles/progress.css">
+<link rel="stylesheet" href="src/styles/analytics.css">
+<link rel="stylesheet" href="src/styles/settings.css">
+<link rel="stylesheet" href="src/styles/butler.css">
+<link rel="stylesheet" href="src/styles/milestone.css">
+<!-- Living Canvas (React + bklit-ui, prebuilt by charts/: npm run build:canvas) -->
+<link rel="stylesheet" href="vendor/marquis-canvas/marquis-canvas.css">
+<link rel="stylesheet" href="src/styles/responsive.css">
+
+<!-- Bundled locally (vendor/gsap.min.js), not a CDN — a CDN outage must
+     never break this page. lib/motion.js and every page module check
+     window.gsap and degrade to instant/CSS-only transitions if it's
+     missing (verified end-to-end with GSAP entirely removed). -->
+<script src="vendor/gsap.min.js"></script>
+<script src="vendor/CustomEase.min.js"></script>
+<script src="vendor/marquis-canvas/marquis-canvas.js" defer></script>
+</head>
+<body>
+
+<div class="grain"></div>
+
+<!-- ============ INTRO ============ -->
+<div id="intro">
+  <svg viewBox="0 0 200 120">
+    <polyline id="peaksPath" class="mark-peaks" points="10,95 42,40 60,72 82,20 105,66 128,34 150,80 190,95"/>
+    <line id="guideLine" class="mark-path" x1="0" y1="70" x2="200" y2="70"/>
+  </svg>
+  <div id="intro-word">MARQUIS</div>
+</div>
+
+<!-- ============ AUTH (not in v2_1; styled to its tokens) ============ -->
+<div class="auth-screen" id="auth-screen">
+  <div class="auth-card">
+    <div class="auth-mark">MARQUIS</div>
+
+    <form id="login-form" novalidate>
+      <div class="field"><label for="login-email">Email</label><input type="email" id="login-email" placeholder="you@company.com" autocomplete="username"></div>
+      <div class="field"><label for="login-pass">Password</label><input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password"></div>
+      <div class="auth-error" id="login-error" role="alert"></div>
+      <button class="auth-submit btn-primary" type="submit" id="login-submit">Enter</button>
+    </form>
+
+    <form id="signup-form" novalidate style="display:none">
+      <div class="field"><label for="signup-name">Name</label><input type="text" id="signup-name" placeholder="Your name" autocomplete="name"></div>
+      <div class="field"><label for="signup-email">Email</label><input type="email" id="signup-email" placeholder="you@company.com" autocomplete="username"></div>
+      <div class="field"><label for="signup-pass">Password</label><input type="password" id="signup-pass" placeholder="At least 8 characters" autocomplete="new-password"></div>
+      <div class="auth-error" id="signup-error" role="alert"></div>
+      <button class="auth-submit btn-primary" type="submit" id="signup-submit">Create account</button>
+    </form>
+
+    <div class="auth-switch" id="auth-switch">
+      First time here? <button type="button" id="show-signup">Create your account</button>
+    </div>
+  </div>
+</div>
+
+<div class="app" id="app">
+
+  <div class="hover-strip" id="hoverStrip"></div>
+  <button type="button" class="menu-btn" id="menuBtn" aria-label="Open navigation" aria-controls="sidebar" aria-expanded="false">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/></svg>
+  </button>
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <nav class="sidebar" id="sidebar" aria-label="Marquis">
+    <div class="brand">
+      <svg viewBox="0 0 200 120"><polyline class="mark-peaks" points="10,95 42,40 60,72 82,20 105,66 128,34 150,80 190,95"/><line class="mark-path" x1="0" y1="70" x2="200" y2="70"/></svg>
+      <div class="brand-word">MARQUIS</div>
+    </div>
+    <div class="nav">
+      <button class="nav-item active" data-page="dashboard">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/></svg>
+        Dashboard
+      </button>
+      <button class="nav-item" data-page="conversation">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 5h16v11H8l-4 4z"/></svg>
+        Butler
+      </button>
+      <button class="nav-item" data-page="progress">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 17l5-8 4 5 4-9 5 12"/></svg>
+        Progress
+      </button>
+      <button class="nav-item" data-page="analytics">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="5" y1="19" x2="5" y2="10"/><line x1="12" y1="19" x2="12" y2="5"/><line x1="19" y1="19" x2="19" y2="13"/></svg>
+        Analytics
+      </button>
+      <button class="nav-item" data-page="settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.34 1.87l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.7 1.7 0 00-1.87-.34 1.7 1.7 0 00-1 1.55V21a2 2 0 01-4 0v-.09A1.7 1.7 0 009 19.4a1.7 1.7 0 00-1.87.34l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.7 1.7 0 004.6 15a1.7 1.7 0 00-1.55-1H3a2 2 0 010-4h.09A1.7 1.7 0 004.6 9a1.7 1.7 0 00-.34-1.87l-.06-.06a2 2 0 112.83-2.83l.06.06A1.7 1.7 0 009 4.6a1.7 1.7 0 001-1.55V3a2 2 0 014 0v.09a1.7 1.7 0 001 1.55 1.7 1.7 0 001.87-.34l.06-.06a2 2 0 112.83 2.83l-.06.06A1.7 1.7 0 0019.4 9a1.7 1.7 0 001.55 1H21a2 2 0 010 4h-.09a1.7 1.7 0 00-1.51 1z"/></svg>
+        Settings
+      </button>
+    </div>
+    <div class="sidebar-foot">
+      <div>
+        <div class="plan-name" id="sbName">Founder</div>
+        <div class="plan-tag" id="sbPlan">Access</div>
+      </div>
+      <button type="button" class="foot-settings" data-page-link="settings" aria-label="Settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.34 1.87l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.7 1.7 0 00-1.87-.34 1.7 1.7 0 00-1 1.55V21a2 2 0 01-4 0v-.09A1.7 1.7 0 009 19.4a1.7 1.7 0 00-1.87.34l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.7 1.7 0 004.6 15a1.7 1.7 0 00-1.55-1H3a2 2 0 010-4h.09A1.7 1.7 0 004.6 9a1.7 1.7 0 00-.34-1.87l-.06-.06a2 2 0 112.83-2.83l.06.06A1.7 1.7 0 009 4.6a1.7 1.7 0 001-1.55V3a2 2 0 014 0v.09a1.7 1.7 0 001 1.55 1.7 1.7 0 001.87-.34l.06-.06a2 2 0 112.83 2.83l-.06.06A1.7 1.7 0 0019.4 9a1.7 1.7 0 001.55 1H21a2 2 0 010 4h-.09a1.7 1.7 0 00-1.51 1z"/></svg>
+      </button>
+    </div>
+  </nav>
+
+  <!-- ============ ONBOARDING (MARQUIS_product.md "Onboarding flow") ============ -->
+  <section class="page" id="page-onboarding">
+    <div class="scroll">
+    <div class="ob-wrap">
+
+      <div class="ob-step active" data-step="1">
+        <div class="label ob-eyebrow">1 of 5</div>
+        <h1 class="ob-title">What are you <em>building</em>?</h1>
+        <div class="ob-grid" id="obTypeGrid" role="radiogroup" aria-label="Business type">
+          <button type="button" class="ob-option" role="radio" aria-checked="false" data-val="SaaS / Software">SaaS / Software</button>
+          <button type="button" class="ob-option" role="radio" aria-checked="false" data-val="E-commerce">E-commerce / Physical product</button>
+          <button type="button" class="ob-option" role="radio" aria-checked="false" data-val="Content / Creator">Content / Creator business</button>
+          <button type="button" class="ob-option" role="radio" aria-checked="false" data-val="Service / Agency">Service / Agency</button>
+          <button type="button" class="ob-option" role="radio" aria-checked="false" data-val="Mobile App">Mobile app</button>
+          <button type="button" class="ob-option" role="radio" aria-checked="false" data-val="Marketplace">Marketplace</button>
+          <button type="button" class="ob-option ob-other" role="radio" aria-checked="false" data-val="Other">Something else</button>
+        </div>
+        <input type="text" class="ob-line-input" id="obOther" placeholder="Describe it in a few words" hidden aria-label="Describe your business type">
+        <div class="ob-nav"><span></span><button type="button" class="btn" id="obNext1" disabled>Continue<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button></div>
+      </div>
+
+      <div class="ob-step" data-step="2">
+        <div class="label ob-eyebrow">2 of 5</div>
+        <h1 class="ob-title">Where are you <em>right now</em>?</h1>
+        <div class="ob-list" id="obStageList" role="radiogroup" aria-label="Current stage">
+          <button type="button" class="ob-option" role="radio" aria-checked="false" data-val="Idea only">Idea only <span>nothing built yet</span></button>
+          <button type="button" class="ob-option" role="radio" aria-checked="false" data-val="Validated">Validated <span>some research done</span></button>
+          <button type="button" class="ob-option" role="radio" aria-checked="false" data-val="Building">Building <span>in progress</span></button>
+          <button type="button" class="ob-option" role="radio" aria-checked="false" data-val="Launched">Launched <span>live, seeking growth</span></button>
+          <button type="button" class="ob-option" role="radio" aria-checked="false" data-val="Established">Established <span>running, seeking optimisation</span></button>
+        </div>
+        <div class="ob-nav"><button type="button" class="btn btn-ghost" data-back="1">Back</button><button type="button" class="btn" id="obNext2" disabled>Continue<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button></div>
+      </div>
+
+      <div class="ob-step" data-step="3">
+        <div class="label ob-eyebrow">3 of 5</div>
+        <h1 class="ob-title">Tell me <em>about it</em>.</h1>
+        <textarea class="ob-textarea" id="obDesc" placeholder="What it is, who it's for, and what made you start it." aria-label="About your business"></textarea>
+        <div class="ob-hint" id="obDescHint">A few sentences is enough. Take as many as you need.</div>
+        <div class="ob-nav"><button type="button" class="btn btn-ghost" data-back="2">Back</button><button type="button" class="btn" id="obToClarify" disabled>Continue<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button></div>
+      </div>
+
+      <div class="ob-step" data-step="4">
+        <div class="label ob-eyebrow">4 of 5</div>
+        <h1 class="ob-title">A few things <em>worth knowing</em>.</h1>
+        <div class="ob-thinking" id="obThinking4" hidden><div class="thinking"><span></span><span></span><span></span></div><span>Reading what you wrote.</span></div>
+        <div id="obQuestions"></div>
+        <div class="ob-nav"><button type="button" class="btn btn-ghost" data-back="3">Back</button><button type="button" class="btn" id="obToReveal">Continue<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button></div>
+      </div>
+
+      <div class="ob-step" data-step="5">
+        <div class="label ob-eyebrow">5 of 5</div>
+        <h1 class="ob-title">Here is where <em>to start</em>.</h1>
+        <div class="ob-thinking" id="obThinking5" hidden><div class="thinking"><span></span><span></span><span></span></div><span>Drawing up phase one.</span></div>
+        <div id="obReveal"></div>
+        <div class="ob-nav"><span></span><button type="button" class="btn btn-primary" id="obEnter" hidden>Enter Marquis<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button></div>
+      </div>
+
+    </div>
+    </div>
+  </section>
+
+  <!-- ============ DASHBOARD ============ -->
+  <section class="page" id="page-dashboard">
+    <div class="scroll"><div class="dash">
+      <div class="dash-top">
+        <div>
+          <h1 class="dash-greeting skeleton">Good evening.</h1>
+          <p class="dash-sub skeleton">Reading the week.</p>
+        </div>
+        <div class="dash-clock" aria-live="off"></div>
+      </div>
+
+      <div class="dash-row hero-row">
+        <div class="card hero-card">
+          <div class="label">Last exchange</div>
+          <blockquote class="hero-quote skeleton">The butler's last word appears here.</blockquote>
+          <div class="hero-meta"><span class="hero-time"></span>
+            <button class="btn" data-goto="conversation">Continue<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+          </div>
+        </div>
+        <div class="card ring-card">
+          <div class="ring-wrap"><svg viewBox="0 0 120 120" aria-hidden="true"><circle class="ring-bg" cx="60" cy="60" r="55"/><circle class="ring-fg" id="ringFg" cx="60" cy="60" r="55"/></svg>
+            <div class="ring-center"><div class="ring-num">–</div><div class="ring-den"></div></div></div>
+          <div class="ring-caption"></div>
+        </div>
+      </div>
+
+      <div class="dash-row stat-row" id="statRow">
+        <div class="card stat-card skeleton"></div><div class="card stat-card skeleton"></div><div class="card stat-card skeleton"></div>
+      </div>
+
+      <div class="dash-row"><div class="card intel-card">
+        <h2 class="intel-title">What the four are reading</h2>
+        <p class="intel-sub">Read continuously across your conversations and progress. Surfaced here, not pushed on you.</p>
+        <div id="intelRows"></div>
+      </div></div>
+
+      <div class="dash-row quick-row" id="quickRow"></div>
+    </div></div>
+  </section>
+
+  <!-- ============ BUTLER (route id stays "conversation") ============ -->
+  <section class="page" id="page-conversation">
+    <div class="butler">
+
+      <!-- Living Canvas: rendered by vendor/marquis-canvas (bklit-ui). The
+           fallback below shows only if that bundle fails to load; the
+           conversation beside it works either way. -->
+      <div class="butler-canvas" id="butlerCanvas">
+        <div class="butler-canvas-fallback">
+          <div class="bcf-context">Phase 3 of 5 &nbsp;·&nbsp; Day 8</div>
+          <p>The four are at work.</p>
+        </div>
+      </div>
+
+      <div class="butler-thread">
+        <svg class="conv-mark" id="convMark" viewBox="0 0 200 120" aria-hidden="true"><polyline class="mark-peaks" points="10,95 42,40 60,72 82,20 105,66 128,34 150,80 190,95"/><line class="mark-path" x1="0" y1="70" x2="200" y2="70"/></svg>
+
+        <div class="conv-scroll" id="convScroll">
+          <div class="msg" id="m1">
+            <p>Two weeks post-launch with zero conversions is not a product problem.</p>
+            <p>It's a distribution problem.</p>
+            <p>Three things are likely happening simultaneously — the people who need this don't know it exists, the people who found it didn't understand it fast enough, or the people who understood it didn't trust it enough to pay.</p>
+            <p>Which of these feels most true to you right now?</p>
+            <time>2 hours ago</time>
+          </div>
+          <div class="msg user"><p>Probably the second one. People land on the site and don't immediately understand what it does.</p><time>2 hours ago</time></div>
+          <div class="msg" id="thinkMsg" style="display:none;"><div class="thinking"><span></span><span></span><span></span></div></div>
+        </div>
+
+        <div class="conv-input-bar">
+          <!-- Communication modes (MARQUIS_product.md): both keep the butler's voice. -->
+          <div class="conv-modes" role="group" aria-label="How you speak to Marquis">
+            <button type="button" data-mode-option="voice" aria-pressed="true">Speak</button>
+            <button type="button" data-mode-option="text" aria-pressed="false">Type</button>
+          </div>
+          <div class="conv-voice">
+            <button type="button" class="speak-btn" id="speakBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M12 15a3 3 0 003-3V6a3 3 0 00-6 0v6a3 3 0 003 3z"/><path d="M19 11a7 7 0 01-14 0M12 19v3"/></svg>
+              <span id="speakLabel">Speak</span>
+            </button>
+          </div>
+          <div class="conv-input" id="convInputBox">
+            <textarea id="convInput" rows="1" placeholder="Reply..." aria-label="Your reply"></textarea>
+          </div>
+          <div class="conv-hint">Enter to send · Shift + Enter for a new line</div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============ PROGRESS: vertical timeline (MARQUIS_product.md) ============ -->
+  <section class="page" id="page-progress">
+    <div class="scroll"><div class="prog-wrap">
+      <header class="prog-head">
+        <div>
+          <div class="label" id="progEyebrow">Your pathway</div>
+          <h1 class="prog-title" id="progTitle">&nbsp;</h1>
+        </div>
+        <div class="prog-gap" id="progGap"></div>
+      </header>
+      <div class="prog-body">
+        <ol class="timeline" id="timeline" aria-label="Phases"></ol>
+        <aside class="prog-aside">
+          <p class="prog-note" id="progNote"></p>
+          <button type="button" class="btn" data-goto="conversation">Discuss this with Marquis<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+        </aside>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- ============ ANALYTICS: the four at work (bklit-ui, same presences as the Butler canvas) ============ -->
+  <section class="page" id="page-analytics">
+    <div class="scroll"><div class="an-wrap">
+      <h1 class="an-title">The four at work</h1>
+      <p class="an-sub">What each agent is watching, each in its own language.</p>
+      <div class="an-grid">
+        <article class="card an-card" data-agent="performance">
+          <div class="an-h-row"><h2 class="an-h">Performance Analyst</h2><div class="label">Activity, 14 days</div></div>
+          <div class="an-visual" id="an-performance"><p class="an-fallback">Reading.</p></div>
+          <p class="an-note" id="an-note-performance">A flat stretch reads as a stuck period, not just an idle one. <b>Aug 30 to Sep 1</b> was the quietest, right before Build's slowest week.</p>
+        </article>
+        <article class="card an-card" data-agent="pathway">
+          <div class="an-h-row"><h2 class="an-h">Pathway Optimizer</h2><div class="label">Route taken</div></div>
+          <div class="an-visual" id="an-pathway"><p class="an-fallback">Reading.</p></div>
+          <p class="an-note" id="an-note-pathway">One fork was considered and left alone: <b>investor materials</b>, correctly skipped for now. Current route: <b>Launch, then First Revenue</b>.</p>
+        </article>
+        <article class="card an-card" data-agent="blocker">
+          <div class="an-h-row"><h2 class="an-h">Blocker Detector</h2><div class="label">Unresolved, 7 days</div></div>
+          <div class="an-visual" id="an-blocker"><p class="an-fallback">Reading.</p></div>
+          <p class="an-note" id="an-note-blocker">Brighter means more unresolved. <span class="flag">Pricing</span> is the one thread that hasn't cooled all week.</p>
+        </article>
+        <article class="card an-card" data-agent="enhancement">
+          <div class="an-h-row"><h2 class="an-h">Enhancement Suggester</h2><div class="label">Standard for stage</div></div>
+          <div class="an-visual" id="an-enhancement"><p class="an-fallback">Reading.</p></div>
+          <p class="an-note" id="an-note-enhancement">Two gaps, both cheap to close: error monitoring and social proof. Neither is urgent. Both are standard by now.</p>
+        </article>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- ============ SETTINGS ============ -->
+  <section class="page" id="page-settings">
+    <div class="scroll"><div class="set-wrap">
+      <h1 class="set-title">Settings</h1>
+
+      <div class="set-group">
+        <div class="set-row"><div><div class="set-label" id="setName">—</div><div class="set-sub" id="setEmail">—</div></div><div class="label" id="setPlan">Access</div></div>
+      </div>
+
+      <div class="set-group">
+        <div class="label set-group-h">Speaking with Marquis</div>
+        <div class="set-row">
+          <div><div class="set-label">How you speak</div><div class="set-sub">Either way, the butler answers aloud.</div></div>
+          <div class="seg" role="group" aria-label="How you speak">
+            <button type="button" data-mode-option="voice" aria-pressed="true">Speak</button>
+            <button type="button" data-mode-option="text" aria-pressed="false">Type</button>
+          </div>
+        </div>
+        <div class="set-row">
+          <div><div class="set-label">The butler's voice</div><div class="set-sub">Marquis speaks its replies aloud</div></div>
+          <button type="button" class="toggle on" id="voiceToggle" role="switch" aria-checked="true" aria-label="The butler's voice"><span class="dot"></span></button>
+        </div>
+      </div>
+
+      <div class="set-group">
+        <div class="label set-group-h">Your business</div>
+        <div class="set-row"><div><div class="set-label">Building</div><div class="set-sub" id="setType">—</div></div></div>
+        <div class="set-row"><div><div class="set-label">Stage</div><div class="set-sub" id="setStage">—</div></div></div>
+        <div class="set-row">
+          <div><div class="set-label">Begin again</div><div class="set-sub" id="resetSub">Clears your profile and starts the introduction afresh</div></div>
+          <button type="button" class="btn" id="resetBtn">Begin again</button>
+        </div>
+      </div>
+
+      <div class="set-group">
+        <div class="set-row"><div><div class="set-label">Sign out</div><div class="set-sub">Ends this session on this device</div></div><button type="button" class="btn" id="signOutBtn">Sign out</button></div>
+      </div>
+    </div></div>
+  </section>
+
+</div>
+
+<!-- Milestone moment (MARQUIS_animations.md #8) -->
+<div class="milestone" id="milestone" role="dialog" aria-modal="true" aria-labelledby="milestoneTitle" hidden>
+  <div class="milestone-box">
+    <div class="label">Phase complete</div>
+    <h2 class="milestone-title" id="milestoneTitle"></h2>
+    <div class="milestone-line"></div>
+    <p class="milestone-sub" id="milestoneSub"></p>
+  </div>
+  <div class="milestone-timer"><span></span></div>
+</div>
+
+<script type="module" src="src/main.js"></script>
+</body>
+</html>

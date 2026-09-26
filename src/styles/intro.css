@@ -1,0 +1,31 @@
+/* ============================================================
+   INTRO — mountain-peaks mark draws in, then reveals the app.
+   Ported from marquis_v2_1.html (was a click-to-wake butler seal in the
+   previous iteration; the reference has no such interaction — it's a
+   fully automatic draw-in sequence on page load).
+   ============================================================ */
+#intro{
+  position:fixed; inset:0; z-index:2000; background:var(--void);
+  display:flex; align-items:center; justify-content:center; flex-direction:column;
+}
+#intro svg{ width:280px; height:168px; overflow:visible; }
+.mark-peaks{ fill:none; stroke:var(--ink); stroke-width:1.6; stroke-linejoin:round; stroke-linecap:round; }
+.mark-path{ fill:none; stroke:var(--silver); stroke-width:1.4; stroke-linecap:round; }
+/* The one sanctioned glow in Marquis: the gold guide line in the intro
+   (MARQUIS_design.md, "Anything that glows" exception). */
+#guideLine{ stroke:var(--gold); filter:drop-shadow(0 0 4px rgba(184,150,46,0.45)); }
+#intro{ cursor:default; }
+
+/* RESILIENCE FIX (not in the reference — see README): the reference has
+   `#intro-word{opacity:0}` with the only reveal being a GSAP tween inside
+   a timeline that also gates the ENTIRE app's first render (onDone only
+   fires from the timeline's onComplete). If GSAP fails, nothing after the
+   intro ever shows. Default to visible; pages/intro.js uses lib/motion's
+   reveal() (gsap.from(), tiered for reduced-motion, with its own
+   setTimeout safety net) to enhance the fade-in on top of this, and
+   separately races the whole timeline's completion against a timeout so
+   onDone() always fires. */
+#intro-word{
+  font-family:var(--font-display); font-weight:300; font-size:15px; letter-spacing:.5em;
+  color:var(--ink-dim); margin-top:30px; opacity:1; text-transform:uppercase;
+}
