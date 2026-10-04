@@ -1,0 +1,20 @@
+/* Config (brief §8): left-aligned column, ruled groups. */
+.config-scroll{ position:absolute; inset:0 0 0 var(--strip); overflow-y:auto; }
+.config{ width:min(560px, calc(100% - 48px)); padding:12vh 0 120px 56px; }
+.cfg-group{ border-top:1px solid var(--rule); padding:8px 0; }
+.cfg-group:first-child{ border-top:none; }
+.cfg-row{ display:grid; grid-template-columns:180px 1fr; align-items:baseline; gap:24px; padding:12px 0; }
+.cfg-val{ font-size:15px; color:var(--ink); letter-spacing:-0.01em; display:flex; align-items:baseline; gap:18px; flex-wrap:wrap; }
+.cfg-note{ font-size:var(--fs-label); color:var(--ink-3); letter-spacing:-0.02em; }
+.cfg-val .act{ font-size:var(--fs-label); }
+
+/* [×] off, [·] on. No pill switches. */
+.tog{ font-size:15px; color:var(--ink-3); transition:color var(--dur-hover) var(--ease); }
+.tog::before{ content:"[×] "; color:var(--ink-3); }
+.tog[data-on="1"]{ color:var(--ink); }
+.tog[data-on="1"]::before{ content:"[·] "; color:var(--ink); }
+.tog:hover{ color:var(--ink-2); }
+.tog[disabled]{ opacity:.35; cursor:default; }
+
+.cfg-confirm{ border-top:1px solid var(--rule); padding-top:22px; margin-top:8px; display:flex; align-items:baseline; gap:18px; }
+@media (max-width:640px){ .config{ padding:56px 0 100px 22px; } .cfg-row{ grid-template-columns:1fr; gap:4px; } }

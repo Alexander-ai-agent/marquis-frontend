@@ -1,0 +1,22 @@
+/* Agents (brief §8): four tiles divided by hairline rules, ledger-style.
+   No cards, no shadows; one gold accent per tile at most. */
+.agents{
+  position:absolute; inset:0 0 0 var(--strip);
+  display:grid; grid-template-columns:1fr 1fr; grid-template-rows:1fr 1fr;
+  padding:0 0 0 0;
+}
+.agent{ display:flex; flex-direction:column; min-width:0; min-height:0; padding:44px 56px 40px; }
+.agent:nth-child(odd){ border-right:1px solid var(--rule); }
+.agent:nth-child(-n+2){ border-bottom:1px solid var(--rule); }
+.agent-head{ display:flex; justify-content:space-between; align-items:baseline; gap:16px; }
+.agent-name{ font-size:var(--fs-title); line-height:1; color:var(--ink); font-weight:300; }
+.agent-state{ color:var(--ink-2); }
+.agent-state.gold{ color:var(--gold); }
+.agent-reads{ margin-top:8px; }
+.agent-visual{ position:relative; flex:1; min-height:90px; margin:22px 0 18px; }
+.agent-finding{ font-size:12px; line-height:1.6; color:var(--ink-2); max-width:56ch; }
+
+@media (max-width:900px){
+  .agents{ display:block; overflow-y:auto; padding-bottom:72px; }
+  .agent{ min-height:340px; border-right:none !important; border-bottom:1px solid var(--rule); padding:36px 22px 30px; }
+}

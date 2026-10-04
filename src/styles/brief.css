@@ -1,0 +1,24 @@
+/* Brief (brief §8): a privately printed intelligence brief. */
+.brief-scroll{ position:absolute; inset:0 0 0 var(--strip); overflow-y:auto; }
+.brief{ width:min(680px, calc(100% - 48px)); margin:0 auto; padding:72px 0 120px; }
+.brief-title{ font-family:var(--mono); font-weight:400; font-size:12px; letter-spacing:var(--track-label); color:var(--ink); display:inline-block; padding-bottom:6px; border-bottom:1px solid var(--rule-strong); }
+.brief-sec{ margin-top:48px; }
+.brief-rule{ height:1px; background:var(--rule); margin:10px 0 18px; }
+.brief-p{ font-size:13px; line-height:1.75; color:var(--ink-2); max-width:66ch; }
+.brief-p + .brief-p{ margin-top:12px; }
+.brief-rec{ color:var(--ink); }
+.brief-table{ width:100%; border-collapse:collapse; font-size:12px; }
+.brief-table th{ text-align:left; font-weight:400; font-size:var(--fs-label); text-transform:uppercase; letter-spacing:var(--track-label); color:var(--ink-3); padding:0 0 8px; }
+.brief-table td{ padding:9px 0; border-top:1px solid var(--rule); color:var(--ink-2); }
+.brief-table td:first-child{ color:var(--ink); }
+.brief-table th:not(:first-child), .brief-table td:not(:first-child){ text-align:right; width:72px; }
+.brief-spark-row{ display:grid; grid-template-columns:160px 1fr; align-items:center; gap:24px; margin:20px 0 14px; }
+.brief-spark{ height:32px; position:relative; }
+.brief-multiples{ display:grid; grid-template-columns:repeat(3, 1fr); gap:28px; margin-bottom:16px; }
+.brief-mult .brief-spark{ margin-top:8px; height:28px; }
+.brief-list div{ display:flex; justify-content:space-between; padding:9px 0; border-top:1px solid var(--rule); font-size:12px; }
+.brief-list div:first-child{ border-top:none; }
+.brief-list dt{ color:var(--ink); }
+.brief-list dd{ color:var(--ink-2); }
+.brief-list dd.dim{ color:var(--ink-3); }
+@media (max-width:640px){ .brief{ padding-top:48px; } .brief-multiples{ grid-template-columns:1fr; } .brief-spark-row{ grid-template-columns:1fr; gap:8px; } }

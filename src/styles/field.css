@@ -1,0 +1,26 @@
+/* The Living Canvas: ambient field (brief §5). Stack, bottom to top:
+   #field (particles, z0) -> .tint (business state, one GPU layer each)
+   -> .grain (matte, every black surface) -> content (z>=2). */
+#field{
+  position:fixed; inset:0; width:100vw; height:100vh;
+  z-index:0; pointer-events:none; display:block;
+}
+
+.tint{
+  position:fixed; inset:0; z-index:1; pointer-events:none;
+  mix-blend-mode:screen; opacity:0;
+  transition:opacity 6s var(--ease);
+  will-change:opacity;
+}
+.tint.ahead{ background:rgba(232,184,75,0.025); }
+.tint.behind{ background:rgba(100,120,160,0.03); }
+body[data-standing="ahead"] .tint.ahead,
+body[data-standing="behind"] .tint.behind{ opacity:1; }
+
+/* Matte finish: low-opacity fractal noise over the whole black field, so
+   it reads as material rather than a flat hex fill. */
+.grain{
+  position:fixed; inset:0; z-index:1; pointer-events:none; opacity:.03;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='256' height='256'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 1.6 -0.2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size:256px 256px;
+}

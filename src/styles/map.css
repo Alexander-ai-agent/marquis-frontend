@@ -1,0 +1,34 @@
+/* Map (brief §8): the spine sits a third of the way in. */
+.map-scroll{ position:absolute; inset:0 0 0 var(--strip); overflow-y:auto; }
+.map{ list-style:none; position:relative; padding:14vh 0 22vh calc(33.333% - var(--strip)); max-width:none; }
+.map::before{ content:""; position:absolute; top:0; bottom:0; left:calc(33.333% - var(--strip)); width:1px; background:var(--rule-strong); }
+.map-row{ position:relative; padding:0 0 64px 44px; }
+.map-node{ position:absolute; left:-2px; top:14px; width:4px; height:4px; border-radius:50%; background:var(--ink); }
+.map-row.done .map-node{ background:var(--gold); }
+.map-row.ahead .map-node{ background:var(--ink-3); }
+.map-row.current .map-node{ left:-3px; top:13px; width:6px; height:6px; background:var(--gold); }
+.map-row.current .map-node::after{
+  content:""; position:absolute; inset:-1px; border-radius:50%;
+  border:1px solid var(--gold-ring); background:var(--gold-ring);
+  animation:map-ring 4s var(--ease) infinite;
+}
+@keyframes map-ring{ 0%{ transform:scale(1); opacity:1; } 100%{ transform:scale(6); opacity:0; } }
+.map-name{ font-size:var(--fs-title); line-height:1.1; font-weight:300; color:var(--ink); }
+.map-row.ahead .map-name{ color:var(--ink-3); }
+.map-date{ margin-top:6px; font-size:var(--fs-small); letter-spacing:-0.02em; color:var(--ink-2); }
+.map-status{ margin-top:4px; }
+.map-row.current .map-status{ color:var(--ink-2); }
+.map-complete{ margin-top:14px; }
+.map-note{ display:block; margin-top:2px; }
+
+/* The milestone moment: the one place MARQUIS snaps. */
+.milestone{ position:fixed; inset:0; z-index:20; background:rgba(5,4,3,.94); display:flex; align-items:center; justify-content:center; cursor:pointer; }
+.milestone-box{ text-align:center; padding:0 24px; }
+.milestone-title{ font-family:var(--serif); font-weight:300; font-size:clamp(44px, 6vw, 84px); line-height:1; margin-top:18px; color:var(--ink); }
+.milestone-title .ch{ display:inline-block; white-space:pre; }
+.milestone-line{ width:160px; height:1px; background:var(--gold); margin:26px auto 22px; transform-origin:left; }
+.milestone-sub{ font-size:13px; color:var(--ink-2); }
+.milestone-timer{ position:absolute; left:0; right:0; bottom:0; height:1px; }
+.milestone-timer span{ display:block; height:100%; background:var(--ink-4); transform-origin:left; transform:scaleX(1); }
+
+@media (max-width:640px){ .map{ padding-left:calc(18% - var(--strip) + 24px); } .map::before{ left:calc(18% - var(--strip) + 24px); } .map-name{ font-size:24px; } }

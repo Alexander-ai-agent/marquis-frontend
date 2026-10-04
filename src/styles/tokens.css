@@ -1,128 +1,109 @@
 /* ============================================================
-   MARQUIS: DESIGN TOKENS
-   Base: marquis_v2_1.html (silver/ink, soft radii, one matte grain).
-   Rules on top, from the specs in STRYDE/:
-   - MARQUIS_product.md (Sep 24): darkest black with a microscopic warm tint.
-   - MARQUIS_design.md: gold appears once per screen, where it's earned;
-     chrome silver is never for text or borders; crimson only for alerts;
-     type scale 48/32/24/15/13; radii 12/8/10/16/pill; no gradients,
-     no glassmorphism, no decorative dividers.
-   - MARQUIS_animations.md motion tokens. Decision (Sep 24): zero ease-in
-     anywhere, so exits use the standard curve instead.
+   MARQUIS: TOKENS
+   Source of truth: the MARQUIS rebuild brief (Oct 2026), which
+   supersedes MARQUIS_design.md where they conflict: two faces only
+   (Cormorant Garamond + JetBrains Mono, no sans), matte near-black,
+   ruled ledgers instead of cards, tight uppercase tracking, heavy
+   decelerating motion with one overshoot (the phase milestone).
    ============================================================ */
 :root{
-  /* surfaces */
-  --void:#030202;              /* #020202 + the spec's microscopic warm tint */
-  --surface:#111116;           /* cards (MARQUIS_design.md "Card design") */
-  --surface-2:#161619;         /* inputs, active states, hover surfaces */
-  --surface-3:#1A1A1F;         /* modals, overlays */
-  --hair:rgba(255,255,255,0.06);
-  --hair-strong:rgba(255,255,255,0.12);
+  /* surface: darkest practical black, matte (grain lives in field.css) */
+  --black:#050403;
 
-  /* ink */
-  --ink:#E9E9EC;
-  --ink-dim:#8B8B90;
-  --ink-faint:#48484D;
+  /* ink: warm white, then opacity steps of the same ink */
+  --ink:#E9E6E0;
+  --ink-2:rgba(233,230,224,0.62);
+  --ink-3:rgba(233,230,224,0.35);
+  --ink-4:rgba(233,230,224,0.20);
 
-  /* chrome silver: secondary accents only (progress indicators), never
-     for text or borders */
-  --silver:#C6C6CC;
-  --silver-wash:rgba(198,198,204,0.07);
+  /* rules: the ledger's hairlines */
+  --rule:rgba(255,255,255,0.08);
+  --rule-strong:rgba(255,255,255,0.15);
 
-  /* gold: once per screen, only where it's earned */
-  --gold:#B8962E;
-  --gold-bright:#D4AC45;
-  --gold-line:rgba(184,150,46,0.5);
-  --gold-wash:rgba(184,150,46,0.08);
-  --gold-wash-press:rgba(184,150,46,0.12);
-
-  /* crimson: errors, warnings, critical alerts only */
-  --crimson:#8B1A1A;
-  --crimson-text:#B5483F;      /* crimson legible as text on near-black */
+  /* gold: one per screen/section, where it is earned */
+  --gold:#E8B84B;
+  --gold-2:rgba(232,184,75,0.50);  /* second series: opacity of the same hue, dashed, direct-labelled */
+  --gold-ring:rgba(232,184,75,0.15);
 
   /* type */
-  --font-display:'Cormorant Garamond', serif;
-  --font-body:'Inter', sans-serif;
-  --font-mono:'JetBrains Mono', monospace;
-  --fs-display:48px;  /* Cormorant 300, max one per page */
-  --fs-h1:32px;       /* Cormorant 400 */
-  --fs-h2:24px;       /* Inter 500 */
-  --fs-body:15px;     /* Inter 400 / 1.7 */
-  --fs-small:13px;
-  --fs-mono:13px;
-  --fs-label:11px;    /* all-caps labels, 0.12em */
+  --serif:'Cormorant Garamond', 'Cormorant', Georgia, serif;
+  --mono:'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  --fs-display:clamp(76px, 8.4vw, 124px);  /* one value or word per screen */
+  --fs-title:30px;      /* serif milestone / section names */
+  --fs-reply:15px;      /* the butler's voice */
+  --fs-body:13px;
+  --fs-small:11px;
+  --fs-label:10px;      /* uppercase labels */
+  --fs-micro:8px;       /* nav letters */
+  --track-label:-0.03em;
 
-  /* radii */
-  --r-card:12px; --r-btn:8px; --r-input:10px; --r-modal:16px; --r-pill:999px;
-
-  /* motion (MARQUIS_animations.md) */
-  --ease-out:cubic-bezier(0.16, 1, 0.3, 1);
-  --ease-standard:cubic-bezier(0.4, 0, 0.2, 1);
+  /* motion: heavy, decelerating, no spring (milestone is the one exception) */
+  --ease:cubic-bezier(0.16, 1, 0.3, 1);
   --ease-milestone:cubic-bezier(0.34, 1.56, 0.64, 1);
-  --dur-instant:100ms; --dur-fast:150ms; --dur-standard:200ms; --dur-deliberate:280ms;
-  --dur-milestone:400ms; --dur-slow:600ms;
+  --dur-hover:260ms;
+  --dur-enter:900ms;
+  --dur-exit:420ms;
 
-  /* legacy aliases kept so nothing else breaks */
-  --ease:var(--ease-out);
-  --warn:var(--crimson-text);
-  --silver-soft:rgba(255,255,255,0.20);
+  /* layout */
+  --strip:28px;
 }
 
 *{ margin:0; padding:0; box-sizing:border-box; }
-/* The hidden attribute always wins over component display rules. */
 [hidden]{ display:none !important; }
-html,body{ height:100%; background:var(--void); color:var(--ink); font-family:var(--font-body); font-size:var(--fs-body); overflow:hidden; }
 
-/* One global matte grain: every surface reads as material, not screen.
-   (v2_1 also had a radial vignette; removed Sep 24. On a near-black
-   background it can only shift one or two 8-bit levels, which rendered
-   as a visible ring, i.e. a moving, decorative background.) */
-.grain{
-  position:fixed; inset:-20%; z-index:998; pointer-events:none;
-  width:140%; height:140%;
-  opacity:.05; mix-blend-mode:overlay;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+html,body{
+  height:100%; overflow:hidden;
+  background:var(--black); color:var(--ink);
+  font-family:var(--mono); font-size:var(--fs-body); line-height:1.6;
+  -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+  font-variant-numeric:tabular-nums;
 }
 
-::selection{ background:var(--gold-wash); color:var(--ink); }
-button{ font-family:inherit; cursor:pointer; background:none; border:none; color:inherit; }
-input, textarea{ font-family:inherit; }
+/* Browser surfaces carry the design too. */
+::selection{ background:rgba(232,184,75,0.22); color:var(--ink); }
+input, textarea{ caret-color:var(--gold); }
+*{ scrollbar-width:thin; scrollbar-color:rgba(255,255,255,0.12) transparent; }
+::-webkit-scrollbar{ width:6px; height:6px; }
+::-webkit-scrollbar-thumb{ background:rgba(255,255,255,0.12); }
+::-webkit-scrollbar-track{ background:transparent; }
 
-/* Cards: #111116, hairline, 12px, no shadow. Hover: border brightens, 200ms. */
-.card{ background:var(--surface); border:1px solid var(--hair); border-radius:var(--r-card); transition:border-color var(--dur-standard) var(--ease-standard); }
+button{ font:inherit; color:inherit; background:none; border:none; cursor:pointer; }
+input, textarea{ font:inherit; color:inherit; background:none; border:none; outline:none; }
 
-.mono{ font-family:var(--font-mono); }
-.serif{ font-family:var(--font-display); }
-.label{ font-size:var(--fs-label); letter-spacing:.12em; text-transform:uppercase; color:var(--ink-faint); }
-
-/* ---------- Buttons (MARQUIS_design.md CTAs + animation #6) ---------- */
-/* Secondary is the default everywhere; the gold primary is used only
-   where that button is the screen's one earned gold moment. */
-.btn{
-  display:inline-flex; align-items:center; gap:8px; padding:12px 24px;
-  border:1px solid var(--hair-strong); border-radius:var(--r-btn);
-  color:var(--ink-dim); font-size:var(--fs-small); letter-spacing:.02em;
-  transition:background var(--dur-standard) var(--ease-standard), border-color var(--dur-standard) var(--ease-standard),
-             color var(--dur-standard) var(--ease-standard), transform var(--dur-fast) var(--ease-out);
-}
-.btn:hover{ border-color:rgba(255,255,255,0.22); color:var(--ink); transform:translateY(-1px); }
-.btn:active{ transform:translateY(0); transition-duration:80ms; }
-.btn svg{ width:13px; height:13px; }
-.btn-primary{ border-color:var(--gold); color:var(--gold); }
-.btn-primary:hover{ background:var(--gold-wash); border-color:var(--gold-bright); color:var(--gold); }
-.btn-primary:active{ background:var(--gold-wash-press); }
-.btn-ghost{ border-color:transparent; color:var(--ink-faint); }
-.btn-ghost:hover{ border-color:transparent; color:var(--ink-dim); transform:none; }
-.btn:disabled{ opacity:.35; cursor:default; transform:none; }
-
-/* Accessibility: visible focus that isn't gold (gold is reserved). */
-a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible, [tabindex]:focus-visible{
-  outline:1px solid rgba(255,255,255,0.45); outline-offset:2px;
+/* Focus is visible but never gold, and never a ring of chrome. */
+a:focus-visible, button:focus-visible, [tabindex]:focus-visible{
+  outline:1px solid var(--ink-3); outline-offset:3px;
 }
 
-/* Skeleton (MARQUIS_design.md "Data loading"): pulses at 0.5Hz, slow, breathing. */
-.skeleton{ background:var(--surface-2); border-radius:6px; animation:skeleton-breathe 2s var(--ease-standard) infinite; color:transparent !important; }
-@keyframes skeleton-breathe{ 0%,100%{ opacity:.45; } 50%{ opacity:.9; } }
+.serif{ font-family:var(--serif); font-weight:300; letter-spacing:0.01em; }
+.label{
+  font-family:var(--mono); font-size:var(--fs-label); line-height:1.4;
+  text-transform:uppercase; letter-spacing:var(--track-label); color:var(--ink-3);
+}
+.gold{ color:var(--gold); }
+
+/* Text-only actions: the only "button" shape in MARQUIS. Hover is an
+   opacity shift; nothing scales, lifts, or floods. */
+.act{
+  font-size:var(--fs-label); text-transform:uppercase; letter-spacing:var(--track-label);
+  color:var(--ink-2); padding:6px 0; transition:opacity var(--dur-hover) var(--ease), color var(--dur-hover) var(--ease);
+}
+.act:hover{ color:var(--ink); }
+.act[disabled]{ opacity:.35; cursor:default; }
+.act.gold-act{ color:var(--gold); }
+.act.gold-act:hover{ opacity:.78; }
+
+/* Underline field (input lines, onboarding answers, auth). */
+.line-field{
+  display:block; width:100%; padding:10px 0 9px;
+  font-size:var(--fs-reply); color:var(--ink);
+  border-bottom:1px solid rgba(255,255,255,0.15);
+  transition:border-color var(--dur-hover) var(--ease);
+}
+.line-field::placeholder{ color:var(--ink-3); }
+.line-field:focus{ border-bottom-color:rgba(255,255,255,0.45); }
+
+.sr-only{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
 
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{

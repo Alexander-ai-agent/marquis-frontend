@@ -1,0 +1,50 @@
+/* Persistent shell (brief §7): a 1px rule with a rotated running head on
+   the far left, the seal bottom-left, five single-letter labels
+   bottom-right. No top bar, no sidebar, no hamburger. */
+.shell{
+  position:fixed; inset:0; z-index:5; pointer-events:none;
+  transition:opacity 1400ms var(--ease);
+}
+body:not([data-phase="app"]) .shell{ opacity:0; visibility:hidden; }
+.shell[data-dormant="true"]{ opacity:.22; }
+
+.shell-strip{
+  position:absolute; left:0; top:0; bottom:0; width:var(--strip);
+  border-right:1px solid rgba(255,255,255,0.15);
+  display:flex; align-items:center; justify-content:center; overflow:hidden;
+}
+.shell-run{
+  transform:rotate(-90deg); white-space:nowrap;
+  font-size:var(--fs-label); text-transform:uppercase; letter-spacing:var(--track-label);
+  color:var(--ink-3);
+}
+
+body[data-demo] .shell-run::after{ content:" · DEMO"; }
+
+.shell-seal{ position:absolute; left:calc(var(--strip) + 22px); bottom:24px; width:22px; height:22px; color:var(--gold); }
+.shell-seal svg{ width:100%; height:100%; display:block; }
+
+.shell-nav{
+  position:absolute; right:22px; bottom:20px; pointer-events:auto;
+  display:flex; flex-direction:column; align-items:flex-end;
+}
+.shell-nav button{
+  font-size:var(--fs-micro); line-height:1; letter-spacing:0; color:var(--ink);
+  opacity:.2; padding:6px 0 6px 14px; cursor:pointer;
+}
+.shell-nav button[aria-current="page"]{ opacity:1; }
+.shell-nav button:focus-visible{ outline-offset:1px; }
+
+/* Pages: one at a time, full screen. Visible by CSS alone, so a stalled
+   animation can never leave a page blank. */
+.app{ position:fixed; inset:0; z-index:2; }
+.page{ position:absolute; inset:0; padding-left:var(--strip); visibility:hidden; opacity:0; }
+.page.active{ visibility:visible; opacity:1; }
+body:not([data-phase="app"]):not([data-phase="onboarding"]) .app{ visibility:hidden; }
+
+@media (max-width:640px){
+  :root{ --strip:20px; }
+  .shell-seal{ left:calc(var(--strip) + 14px); bottom:18px; width:18px; height:18px; }
+  .shell-nav{ right:14px; bottom:14px; }
+  .shell-nav button{ padding:7px 0 7px 18px; }
+}

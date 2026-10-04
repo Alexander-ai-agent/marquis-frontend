@@ -57,7 +57,7 @@ function wireLoginForm() {
     if (message) { showFieldError(errEl, message); return; }
 
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner"></span>';
+    btn.textContent = 'One moment';
     try {
       const { token, user } = await login(email, password);
       setSession(token, user);
@@ -91,7 +91,7 @@ function wireSignupForm() {
     if (message) { showFieldError(errEl, message); return; }
 
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner"></span>';
+    btn.textContent = 'One moment';
     try {
       const { token, user } = await signup(name, email, password);
       setSession(token, user);

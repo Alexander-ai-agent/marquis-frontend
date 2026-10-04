@@ -1,0 +1,57 @@
+/* The canvas as a workspace (brief §6). Same plane as the field: no
+   card, no panel, no modal. The butler column recedes to the foot. */
+.workspace{
+  position:absolute; left:var(--strip); right:0; top:0; bottom:232px;
+  padding:44px 64px 0 56px; display:flex; flex-direction:column;
+}
+.ws-head{ display:flex; align-items:baseline; justify-content:space-between; gap:24px; padding-bottom:14px; border-bottom:1px solid var(--rule); }
+.ws-close{ color:var(--ink-3); }
+.ws-plane{ position:relative; flex:1; min-height:0; margin-top:24px; }
+.ws-quiet{ padding-top:40px; }
+
+/* chart */
+.ws-chart{ position:absolute; inset:0; }
+
+/* reel */
+.reel{ position:absolute; inset:0 0 120px 0; }
+.frame{
+  position:absolute; width:clamp(64px, 7vw, 104px); aspect-ratio:3 / 4;
+  transform:translate(-50%, -50%); padding:0; cursor:pointer;
+  outline:1px solid transparent; outline-offset:4px;
+  transition:outline-color var(--dur-hover) var(--ease), opacity var(--dur-hover) var(--ease);
+  opacity:.72;
+}
+.frame img{ width:100%; height:100%; object-fit:cover; display:block; filter:grayscale(1) contrast(1.05) brightness(.82); }
+.frame:hover{ opacity:1; }
+.frame[aria-pressed="true"]{ opacity:1; outline-color:var(--gold); }
+.reel-tray{
+  position:absolute; left:50%; bottom:28px; transform:translateX(-50%);
+  display:flex; gap:10px; align-items:flex-end;
+}
+.reel-tray .frame{ position:relative; transform:none; width:64px; opacity:1; outline-color:transparent; cursor:default; }
+.frame-idx{ position:absolute; left:0; bottom:-18px; color:var(--ink-3); }
+.reel-act{ position:absolute; left:0; right:0; bottom:20px; display:flex; justify-content:space-between; align-items:baseline; }
+
+/* wireframe: Alfred's sketch, editable in place */
+.wire{ position:absolute; inset:0 0 30px 0; }
+.region{ position:absolute; cursor:grab; touch-action:none; padding:10px 12px; outline:none; }
+.region.held{ cursor:grabbing; }
+.region-rule{ position:absolute; inset:0; width:100%; height:100%; overflow:visible; pointer-events:none; }
+.region-rule rect{ width:calc(100% - 1px); height:calc(100% - 1px); fill:none; stroke:rgba(233,230,224,.38); stroke-width:1; vector-effect:non-scaling-stroke; transition:stroke var(--dur-hover) var(--ease); }
+.region:hover .region-rule rect, .region:focus-visible .region-rule rect{ stroke:rgba(233,230,224,.7); }
+.region.held .region-rule rect{ stroke:var(--gold); }
+.region-label{ position:relative; display:block; color:var(--ink-2); }
+.region-note{
+  position:relative; display:block; margin-top:6px; max-width:32ch;
+  font-family:var(--serif); font-style:italic; font-size:15px; line-height:1.35; color:var(--ink-2);
+}
+.region-note::before{ content:"↳ "; font-family:var(--mono); font-style:normal; font-size:11px; color:var(--ink-3); }
+.region-grip{ position:absolute; right:-4px; bottom:-4px; width:9px; height:9px; border-right:1px solid var(--ink-3); border-bottom:1px solid var(--ink-3); cursor:nwse-resize; }
+.region-note-input{ position:relative; margin-top:8px; width:100%; font-size:12px; padding:4px 0; border-bottom:1px solid rgba(255,255,255,.45); }
+.wire-hint{ position:absolute; left:0; bottom:0; }
+
+@media (max-width:640px){
+  .workspace{ padding:28px 18px 0 18px; bottom:190px; }
+  .frame{ width:56px; }
+  .region-note{ display:none; }
+}

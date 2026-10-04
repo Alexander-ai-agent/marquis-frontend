@@ -1,25 +1,59 @@
-/* ============================================================
-   BUTLER — the Living Canvas page (route id: conversation).
-   Canvas (left) shows what the butler is explaining, or the four
-   agents at work when idle; the thread (right) is the conversation.
-   One composition, no borders between them — space is the divider.
-   ============================================================ */
+/* Butler, the landing screen (brief §7): a small, dense object floating
+   in a large dark field. The ambient canvas is the star; this column
+   never competes with it for space. */
 .butler{
-  height:100%;
-  display:grid;
-  grid-template-columns:minmax(0, 1.5fr) minmax(380px, 1fr);
+  position:absolute; left:calc(50% + var(--strip) / 2); top:46%;
+  width:min(500px, calc(100% - var(--strip) - 56px));
+  transform:translate(-50%, -50%);
+  display:flex; flex-direction:column; align-items:center; text-align:center;
+  transition:top 900ms var(--ease), transform 900ms var(--ease), width 900ms var(--ease);
 }
-.butler-canvas{ min-width:0; min-height:0; padding:64px 48px 56px 72px; position:relative; }
-.butler-thread{ min-width:0; min-height:0; display:flex; flex-direction:column; padding:0 56px 0 32px; }
 
-.butler-canvas-fallback{ height:100%; display:flex; flex-direction:column; }
-.butler-canvas[data-canvas-mounted] .butler-canvas-fallback{ display:none; }
-.bcf-context{ font-family:var(--font-mono); font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-faint); }
-.butler-canvas-fallback p{ margin:auto 0; font-family:var(--font-display); font-style:italic; font-size:24px; color:var(--ink-faint); }
+.glyph{ width:30px; height:40px; color:var(--gold); }
+.glyph svg{ width:100%; height:100%; display:block; overflow:visible; }
+.glyph .glyph-frame, .glyph .glyph-brow{ transition:opacity 600ms var(--ease); }
+.glyph-core{ transform-box:fill-box; transform-origin:center; }
+.glyph-small{ width:22px; height:30px; }
 
-@media (max-width:900px){
-  .butler{ grid-template-columns:1fr; grid-template-rows:42vh minmax(0,1fr); }
-  .butler-canvas{ padding:56px 22px 12px; }
-  .butler-thread{ padding:0 18px; }
-  .conv-mark{ margin-top:12px; }
+.you-line{
+  margin-top:26px; max-width:100%;
+  font-size:var(--fs-small); line-height:1.6; color:var(--ink-3);
+}
+.you-line::before{ content:"— "; }
+
+.subtitle{
+  margin-top:22px; min-height:1.65em; max-width:100%;
+  font-size:var(--fs-reply); line-height:1.65; color:var(--ink);
+  font-weight:400; text-wrap:balance; overflow-wrap:anywhere;
+}
+.you-line:not([hidden]) + .subtitle{ margin-top:12px; }
+.subtitle:empty{ min-height:0; margin-top:0; }
+
+/* Nothing but the mark until Alfred speaks; the tail (divide + input) is
+   the only new thing allowed to appear after his first line. */
+.butler-tail{ width:100%; opacity:0; visibility:hidden; transition:opacity 1100ms var(--ease), visibility 0s 1100ms; }
+.butler[data-stage="open"] .butler-tail{ opacity:1; visibility:visible; transition:opacity 1100ms var(--ease); }
+
+.divide{ display:flex; align-items:center; gap:12px; margin-top:28px; width:100%; }
+.divide-rule{ flex:1; height:1px; background:var(--rule); }
+.divide .label{ white-space:nowrap; }
+
+.intent-row{ position:relative; margin-top:12px; width:100%; }
+.intent{ text-align:center; padding-left:52px; padding-right:52px; }
+.intent:disabled{ opacity:.45; }
+.speak{ position:absolute; right:0; top:50%; transform:translateY(-50%); color:var(--ink-3); }
+.speak[aria-pressed="true"]{ color:var(--ink); }
+
+/* While Alfred is making something (§6) the composition recedes to the
+   foot of the screen and the canvas workspace takes the room. */
+body[data-workspace] .butler{ top:calc(100% - 118px); transform:translate(-50%, -50%) scale(.9); width:min(460px, calc(100% - var(--strip) - 140px)); }
+body[data-workspace] .butler .glyph{ display:none; }
+body[data-workspace] .butler .you-line{ margin-top:0; }
+body[data-workspace] .butler .subtitle{ font-size:13px; }
+body[data-workspace] .butler .divide{ margin-top:16px; }
+
+@media (max-width:640px){
+  .butler{ top:44%; width:calc(100% - var(--strip) - 40px); }
+  .subtitle{ font-size:14px; }
+  body[data-workspace] .butler{ top:calc(100% - 104px); width:calc(100% - var(--strip) - 64px); transform:translate(-50%, -50%); }
 }

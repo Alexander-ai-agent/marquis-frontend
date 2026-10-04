@@ -21,6 +21,11 @@ const DEMO_REPLIES = [
   "That's worth sitting with rather than solving immediately. Most founders route around discomfort like this instead of through it — and the ones who don't tend to move faster afterward, not slower.\n\nTell me what you'd do if the obvious answer weren't available to you.",
 ];
 let demoReplyIndex = 0;
+const DEMO_IDLE = [
+  "Only one thing is urgent this week: the pricing page. The rest can wait without cost.",
+  "You've asked this before, in a different shape. Ship the smaller version this week.",
+  "That's worth sitting with before solving. What would you do if the obvious answer weren't available?",
+];
 
 /**
  * fetch() with an AbortController-based timeout. A hung/misconfigured
@@ -97,7 +102,9 @@ async function realConversation(token, message, conversationHistory) {
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok || !data.butler_response) throw new Error(data.error || 'No reply');
-  return { text: data.butler_response, visualization: data.visualization || null };
+  // `workspace` is the canvas-workspace contract (reel / wireframe); the
+  // backend does not emit it yet (TODO), so real mode shows charts only.
+  return { text: data.butler_response, visualization: data.visualization || null, workspace: data.workspace || null };
 }
 
 // DEMO_MODE only: canned replies, each paired with the canvas view it
@@ -117,6 +124,18 @@ const DEMO_VIZ = {
     { name: 'Payments', value: 100 }, { name: 'Analytics', value: 95 }, { name: 'Error monitoring', value: 15 },
     { name: 'Onboarding email', value: 85 }, { name: 'Social proof', value: 20 } ] },
 };
+// Replies stay to a sentence or two (rebuild brief §7): a longer thought
+// becomes a second exchange, never a taller block.
+const DEMO_SHORT = {
+  revenue: "At this pace you pass three thousand a month by December. That line assumes conversion holds; nothing guarantees it yet.",
+  timeline: "Seventeen days behind, nearly all of it from Build. You underquote build work, not distribution work.",
+  blocker: "Pricing has come up three times without a decision. Put a number on the page this week; you can change it.",
+  coverage: "Two standard things are missing: error monitoring and social proof. Neither is urgent; both are cheap.",
+};
+const DEMO_WORK = [
+  { match: /\b(reel|instagram|video|montage)\b/i, workspace: { type: 'reel', query: 'launch week' }, label: 'REEL · SELECTION', text: "I've gathered twelve from this week. Keep the ones that feel like the product." },
+  { match: /\b(website|site|landing page|homepage)\b/i, workspace: { type: 'wireframe', subject: 'the site' }, label: 'SITE · SKETCH', text: "A first sketch. Move what's wrong, note what's missing, and I'll take it from there." },
+];
 const DEMO_TOPICS = [
   { match: /revenue|money|mrr|income|earn|project/i, viz: 'revenue', text: "At the pace of the last two months, you'd pass three thousand a month by December. That line is a projection, not a promise. It assumes conversion holds while traffic grows, and right now nothing guarantees the second half of that.\n\nThe number worth watching isn't revenue. It's how many people who land on the page reach the checkout at all." },
   { match: /phase|behind|timeline|estimate|late|progress/i, viz: 'timeline', text: "You're seventeen days behind the combined estimate, and almost all of it came from Build. Launch is tracking close to plan.\n\nThe pattern is consistent: you underquote build work, not distribution work. Next time you estimate a build phase, add half again. You'll be right more often than not." },
@@ -126,9 +145,11 @@ const DEMO_TOPICS = [
 
 async function demoConversation(message) {
   await new Promise((r) => setTimeout(r, CONVO_LATENCY_MS));
+  const work = DEMO_WORK.find((t) => t.match.test(message || ''));
+  if (work) return { text: work.text, visualization: null, workspace: work.workspace, label: work.label };
   const topic = DEMO_TOPICS.find((t) => t.match.test(message || ''));
-  if (topic) return { text: topic.text, visualization: DEMO_VIZ[topic.viz] };
-  const reply = DEMO_REPLIES[demoReplyIndex % DEMO_REPLIES.length];
+  if (topic) return { text: DEMO_SHORT[topic.viz], visualization: DEMO_VIZ[topic.viz] };
+  const reply = DEMO_IDLE[demoReplyIndex % DEMO_IDLE.length];
   demoReplyIndex++;
   return { text: reply, visualization: null };
 }
