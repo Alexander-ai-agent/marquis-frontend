@@ -54,6 +54,10 @@ export function resetOnboarding() {
 
 export function clearSession() {
   localStorage.clear();
+  state.token = null;
+  state.user = null;
+  state.onboarded = false;
+  state.profile = null;
 }
 
 export function setMode(mode) {

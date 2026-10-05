@@ -2,6 +2,8 @@
 // timeout so a hung backend endpoint (see README — this bit us for real)
 // never hangs the UI indefinitely.
 
+import { state, clearSession } from './state.js';
+
 // Deployed Flask backend (Railway). Update if the Railway URL changes.
 export const API_BASE = 'https://marquis-production.up.railway.app/api/v1/marquis';
 
@@ -10,6 +12,9 @@ export const API_BASE = 'https://marquis-production.up.railway.app/api/v1/marqui
 // never filled in, so a fresh clone never silently tries a bad URL.
 const FORCE_DEMO = false;
 export const DEMO_MODE = FORCE_DEMO || API_BASE.includes('YOUR-RAILWAY-URL');
+
+// A login saved while the app ran in demo mode is not a real session.
+if (!DEMO_MODE && state.token === 'demo-token') clearSession();
 
 const DEMO_LATENCY_MS = 500;
 const CONVO_LATENCY_MS = 1100;
@@ -41,7 +46,14 @@ export async function fetchWithTimeout(url, options = {}, timeoutMs = FETCH_TIME
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    return await fetch(url, { ...options, signal: controller.signal });
+    const res = await fetch(url, { ...options, signal: controller.signal });
+    // A rejected session (expired, or a leftover demo login) can't recover
+    // on its own: forget it and return to sign-in rather than failing quietly.
+    if (res.status === 401 && options.headers?.Authorization) {
+      clearSession();
+      location.reload();
+    }
+    return res;
   } catch (e) {
     if (e.name === 'AbortError') {
       throw new Error('Marquis is taking too long to answer. Try again shortly.');
