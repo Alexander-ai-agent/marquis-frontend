@@ -115,7 +115,7 @@ async function send(text) {
   if (!local) history.push({ role: 'assistant', content: reply.text });
 
   if (reply.workspace) workspace.open(reply.workspace.type, reply.workspace);
-  else if (reply.visualization) workspace.open('chart', reply.visualization);
+  else if (reply.visualization) workspace.openViz(reply.visualization);
   else if (!local && workspace.kind() === 'chart') workspace.close();
   setContext(reply.label || workspace.label());
 
@@ -189,6 +189,13 @@ export function initButler() {
   document.addEventListener('marquis:voice', (e) => { if (!e.detail) silence(); });
   document.addEventListener('marquis:remark', (e) => remark(e.detail || {}));
   document.addEventListener('marquis:workspace-closed', () => setContext());
+
+  // You draw first: open the pen layer; Alfred reads it when handed over.
+  qs('#drawBtn').addEventListener('click', () => {
+    if (busy) return;
+    workspace.open('pen', {});
+    remark({ text: "Draw it as you see it. I'll make sense of it.", label: 'YOUR SKETCH' });
+  });
   applyMode(state.mode);
 
   workspace.initWorkspace();

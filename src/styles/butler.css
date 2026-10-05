@@ -43,6 +43,8 @@
 .intent:disabled{ opacity:.45; }
 .speak{ position:absolute; right:0; top:50%; transform:translateY(-50%); color:var(--ink-3); }
 .speak[aria-pressed="true"]{ color:var(--ink); }
+.draw{ position:absolute; left:0; top:50%; transform:translateY(-50%); color:var(--ink-3); }
+body[data-workspace="pen"] .draw{ color:var(--ink); }
 
 /* While Alfred is making something (§6) the composition recedes to the
    foot of the screen and the canvas workspace takes the room. */

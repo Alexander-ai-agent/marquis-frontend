@@ -8,12 +8,15 @@ export const API_BASE = 'https://marquis-production.up.railway.app/api/v1/marqui
 // Flip to false once the backend is confirmed healthy end-to-end — see
 // README "Switching off DEMO_MODE". Also auto-enables if API_BASE was
 // never filled in, so a fresh clone never silently tries a bad URL.
-const FORCE_DEMO = true;
+const FORCE_DEMO = false;
 export const DEMO_MODE = FORCE_DEMO || API_BASE.includes('YOUR-RAILWAY-URL');
 
 const DEMO_LATENCY_MS = 500;
 const CONVO_LATENCY_MS = 1100;
 const FETCH_TIMEOUT_MS = 12000;
+// A reply may involve reading the web first (search, pages, a second
+// model call), so the conversation gets far longer than other requests.
+const CONVERSATION_TIMEOUT_MS = 90000;
 
 const DEMO_REPLIES = [
   "Three things require your attention, and only one of them is actually urgent. Your pricing page has sat untouched for six days — everything else around it keeps moving, which is usually the tell that it's the real blocker, not just an unfinished task.\n\nThe other two can wait. Outreach can wait a week without cost. Pricing cannot, because nothing downstream of it — your onboarding copy, your checkout flow, your first sales conversation — can be finished honestly until that number exists.",
@@ -99,12 +102,17 @@ async function realConversation(token, message, conversationHistory) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     body: JSON.stringify({ message, conversation_history: conversationHistory }),
-  });
+  }, CONVERSATION_TIMEOUT_MS);
   const data = await res.json().catch(() => ({}));
   if (!res.ok || !data.butler_response) throw new Error(data.error || 'No reply');
   // `workspace` is the canvas-workspace contract (reel / wireframe); the
   // backend does not emit it yet (TODO), so real mode shows charts only.
-  return { text: data.butler_response, visualization: data.visualization || null, workspace: data.workspace || null };
+  return {
+    text: data.butler_response,
+    visualization: data.visualization || null,
+    workspace: data.workspace || null,
+    sources: Array.isArray(data.sources) ? data.sources : [],
+  };
 }
 
 // DEMO_MODE only: canned replies, each paired with the canvas view it
@@ -132,7 +140,24 @@ const DEMO_SHORT = {
   blocker: "Pricing has come up three times without a decision. Put a number on the page this week; you can change it.",
   coverage: "Two standard things are missing: error monitoring and social proof. Neither is urgent; both are cheap.",
 };
+// Demo examples of the general canvas blocks (real mode: Claude fills these in).
+const DEMO_BLOCKS = {
+  sheet: { type: 'sheet', title: 'Revenue against costs', columns: ['Month', 'Revenue', 'Costs', 'Net'], rows: [
+    ['Jul', 0, 820, '=B1-C1'], ['Aug', 420, 860, '=B2-C2'], ['Sep', 1180, 910, '=B3-C3'], ['Oct', 1900, 960, '=B4-C4'],
+    ['Total', '=SUM(B1:B4)', '=SUM(C1:C4)', '=SUM(D1:D4)'], ['Average', '=AVERAGE(B1:B4)', '=AVERAGE(C1:C4)', '=AVERAGE(D1:D4)'] ] },
+  chart: { type: 'chart', title: 'Signups against paid', unit: '', x: ['W1', 'W2', 'W3', 'W4', 'W5', 'W6', 'W7', 'W8'], series: [
+    { name: 'Signups', values: [12, 19, 24, 31, 29, 40, 46, 55] }, { name: 'Paid', values: [0, 1, 2, 2, 4, 5, 7, 9] } ] },
+  drawing: { type: 'drawing', title: 'How a visitor becomes a customer', shapes: [
+    { kind: 'rect', x: 4, y: 38, w: 18, h: 16, label: 'Lands on page' }, { kind: 'arrow', x1: 22, y1: 46, x2: 34, y2: 46 },
+    { kind: 'rect', x: 34, y: 38, w: 18, h: 16, label: 'Understands it' }, { kind: 'arrow', x1: 52, y1: 46, x2: 64, y2: 46 },
+    { kind: 'rect', x: 64, y: 38, w: 18, h: 16, label: 'Trusts it' }, { kind: 'arrow', x1: 82, y1: 46, x2: 92, y2: 46 },
+    { kind: 'circle', x: 95, y: 46, r: 3, label: 'Pays' }, { kind: 'line', x1: 43, y1: 54, x2: 43, y2: 72 },
+    { kind: 'text', x: 34, y: 78, text: 'most leave here: the first five seconds' } ] },
+};
 const DEMO_WORK = [
+  { match: /\b(sheet|spreadsheet|excel|table|p&l|budget|costs?)\b/i, viz: DEMO_BLOCKS.sheet, label: 'SHEET · REVENUE', text: 'Revenue against costs, month by month. Change any number and the totals follow.' },
+  { match: /\b(signups?|conversion|funnel chart|compare)\b/i, viz: DEMO_BLOCKS.chart, label: 'CHART · WEEKLY', text: 'Signups climb steadily; paid lags well behind. The gap is the conversion problem.' },
+  { match: /\b(draw|diagram|flow|explain how)\b/i, viz: DEMO_BLOCKS.drawing, label: 'DRAWING · FUNNEL', text: 'Four steps from visit to payment. Most people leave at the second.' },
   { match: /\b(reel|instagram|video|montage)\b/i, workspace: { type: 'reel', query: 'launch week' }, label: 'REEL · SELECTION', text: "I've gathered twelve from this week. Keep the ones that feel like the product." },
   { match: /\b(website|site|landing page|homepage)\b/i, workspace: { type: 'wireframe', subject: 'the site' }, label: 'SITE · SKETCH', text: "A first sketch. Move what's wrong, note what's missing, and I'll take it from there." },
 ];
@@ -146,7 +171,7 @@ const DEMO_TOPICS = [
 async function demoConversation(message) {
   await new Promise((r) => setTimeout(r, CONVO_LATENCY_MS));
   const work = DEMO_WORK.find((t) => t.match.test(message || ''));
-  if (work) return { text: work.text, visualization: null, workspace: work.workspace, label: work.label };
+  if (work) return { text: work.text, visualization: work.viz || null, workspace: work.workspace || null, label: work.label };
   const topic = DEMO_TOPICS.find((t) => t.match.test(message || ''));
   if (topic) return { text: DEMO_SHORT[topic.viz], visualization: DEMO_VIZ[topic.viz] };
   const reply = DEMO_IDLE[demoReplyIndex % DEMO_IDLE.length];
@@ -156,6 +181,74 @@ async function demoConversation(message) {
 
 export function sendConversationMessage(token, message, conversationHistory) {
   return DEMO_MODE ? demoConversation(message) : realConversation(token, message, conversationHistory);
+}
+
+/* ---------------- Canvas ---------------- */
+
+/** The user drew first: send the sketch, get { text, visualization } back.
+ * Demo mode reads the strokes locally (each stroke cluster becomes a
+ * region), so the result still reflects what was actually drawn. */
+export async function interpretDrawing(token, pngDataUrl, hint, strokes) {
+  if (DEMO_MODE) {
+    await new Promise((r) => setTimeout(r, CONVO_LATENCY_MS));
+    return demoInterpret(strokes);
+  }
+  const res = await fetchWithTimeout(`${API_BASE}/canvas/interpret`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ image: pngDataUrl, hint }),
+  }, 45000);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'I could not read that drawing.');
+  return { text: data.butler_response, visualization: data.visualization };
+}
+
+function demoInterpret(strokes) {
+  // Merge overlapping stroke bounding boxes into regions.
+  const boxes = strokes.filter((s) => s.length > 1).map((s) => {
+    const xs = s.map((p) => p.x), ys = s.map((p) => p.y);
+    return { x0: Math.min(...xs), y0: Math.min(...ys), x1: Math.max(...xs), y1: Math.max(...ys) };
+  });
+  const near = (a, b) => a.x0 <= b.x1 + 0.02 && b.x0 <= a.x1 + 0.02 && a.y0 <= b.y1 + 0.02 && b.y0 <= a.y1 + 0.02;
+  let merged = true;
+  while (merged) {
+    merged = false;
+    for (let i = 0; i < boxes.length && !merged; i++) for (let j = i + 1; j < boxes.length; j++) {
+      if (near(boxes[i], boxes[j])) {
+        const a = boxes[i], b = boxes.splice(j, 1)[0];
+        boxes[i] = { x0: Math.min(a.x0, b.x0), y0: Math.min(a.y0, b.y0), x1: Math.max(a.x1, b.x1), y1: Math.max(a.y1, b.y1) };
+        merged = true; break;
+      }
+    }
+  }
+  const regions = boxes.filter((b) => b.x1 - b.x0 > 0.03 || b.y1 - b.y0 > 0.03).sort((a, b) => a.y0 - b.y0 || a.x0 - b.x0).slice(0, 16)
+    .map((b, i) => ({ label: `Region ${i + 1}`, x: b.x0, y: b.y0, w: Math.max(0.06, b.x1 - b.x0), h: Math.max(0.05, b.y1 - b.y0), note: '' }));
+  if (!regions.length) throw new Error('I could not make out a layout in that drawing.');
+  return {
+    text: `I read ${regions.length} part${regions.length === 1 ? '' : 's'}. Name them by double-clicking and I will take it from there. (Demo: real mode reads the drawing itself.)`,
+    visualization: { type: 'blueprint', title: 'Your sketch, tidied', regions },
+  };
+}
+
+/** Real photographs for the canvas (backend /images/search, Unsplash). */
+export async function searchImages(token, query) {
+  if (DEMO_MODE) return null;
+  const res = await fetchWithTimeout(`${API_BASE}/images/search?q=${encodeURIComponent(query)}`, { headers: { Authorization: `Bearer ${token}` } });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'Image search is unavailable.');
+  return data.images || [];
+}
+
+/** Alfred's line as speech (backend /voice, Fish Audio). Returns an MP3
+ * Blob, or null when there is no live voice (demo mode / no session). */
+export async function synthesizeSpeech(token, text) {
+  if (DEMO_MODE || !token) return null;
+  const res = await fetchWithTimeout(`${API_BASE}/voice`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ text }),
+  });
+  if (!res.ok) throw new Error('The voice is unavailable.');
+  return res.blob();
 }
 
 /** Real data for the canvas's idle presences (backend /agents/signals). */

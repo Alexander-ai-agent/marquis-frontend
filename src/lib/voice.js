@@ -5,6 +5,7 @@
 
 import { prefersReduced } from './motion.js';
 import { state } from './state.js';
+import { DEMO_MODE, synthesizeSpeech } from './api.js';
 
 export const MS_PER_CHAR = 38;
 
@@ -48,9 +49,52 @@ if (window.speechSynthesis) {
   speechSynthesis.addEventListener?.('voiceschanged', pickVoice);
 }
 
-/** Speak if allowed. Returns true when speech actually started. */
-export function speak(text, { onWord, onEnd } = {}) {
-  if (!state.voiceOn || !activated || !window.speechSynthesis) return false;
+// Fish Audio first (a real, composed British voice); the browser's own
+// speech is the fallback, so Alfred is never silent when voice is on.
+const MAX_SPEECH_CHARS = 1500;
+let audio = null;
+let speechToken = 0;
+
+function stopAudio() {
+  speechToken += 1;
+  if (audio) { audio.pause(); URL.revokeObjectURL(audio.src); audio = null; }
+}
+
+/** Pulse onWord once per word, spread across the clip's duration. */
+function pulseAcross(el, words, onWord, token) {
+  const step = (el.duration * 1000) / Math.max(words.length, 1);
+  words.forEach((w, i) => setTimeout(() => { if (token === speechToken) onWord?.(w); }, i * step));
+}
+
+async function speakFish(text, { onWord, onEnd }, token) {
+  const blob = await synthesizeSpeech(state.token, text);
+  if (!blob || token !== speechToken) return Boolean(blob);
+  const el = new Audio(URL.createObjectURL(blob));
+  audio = el;
+  el.addEventListener('playing', () => pulseAcross(el, text.split(/\s+/), onWord, token), { once: true });
+  el.addEventListener('ended', () => { if (token === speechToken) { stopAudio(); onEnd?.(); } }, { once: true });
+  await el.play();
+  return true;
+}
+
+/** Speak if allowed. Returns true when speech actually started (or is
+ * starting: the Fish Audio clip may arrive a moment after the text). */
+export function speak(text, opts = {}) {
+  if (!state.voiceOn || !activated) return false;
+  stopAudio();
+  const token = speechToken;
+  const line = String(text);
+  if (state.token && !DEMO_MODE && line.length <= MAX_SPEECH_CHARS) {
+    speakFish(line, opts, token)
+      .then((ok) => { if (!ok && token === speechToken) speakBrowser(line, opts); })
+      .catch(() => { if (token === speechToken) speakBrowser(line, opts); });
+    return true;
+  }
+  return speakBrowser(line, opts);
+}
+
+function speakBrowser(text, { onWord, onEnd } = {}) {
+  if (!window.speechSynthesis) { onEnd?.(); return false; }
   try {
     speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(String(text));
@@ -67,4 +111,7 @@ export function speak(text, { onWord, onEnd } = {}) {
   } catch (_) { return false; }
 }
 
-export function silence() { try { window.speechSynthesis?.cancel(); } catch (_) {} }
+export function silence() {
+  stopAudio();
+  try { window.speechSynthesis?.cancel(); } catch (_) {}
+}

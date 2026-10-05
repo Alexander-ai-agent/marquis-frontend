@@ -16,7 +16,18 @@
 import { qs, escapeHtml } from '../lib/dom.js';
 import { skipMovement, EASE } from '../lib/motion.js';
 import { setFieldState } from '../lib/field.js';
-import { DEMO_MODE } from '../lib/api.js';
+import { DEMO_MODE, searchImages, interpretDrawing } from '../lib/api.js';
+import { state } from '../lib/state.js';
+import { createSheet, colName, formatCell } from '../lib/sheet.js';
+
+/** Route a /conversation `visualization` block to the right workspace. */
+export function openViz(viz) {
+  if (viz.type === 'sheet') open('sheet', viz);
+  else if (viz.type === 'drawing') open('drawing', viz);
+  else if (viz.type === 'blueprint') open('wireframe', { subject: viz.title, regions: viz.regions });
+  else if (viz.type === 'images') open('reel', { query: viz.query, title: viz.title });
+  else open('chart', viz);
+}
 
 const gsap = window.gsap;
 let root;
@@ -37,7 +48,10 @@ export function label() {
   if (!current) return null;
   if (current.kind === 'chart') return (LABELS[current.data.type] || (() => 'CANVAS'))();
   if (current.kind === 'reel') return current.stage === 'music' ? 'REEL · MUSIC' : current.stage === 'done' ? 'REEL · HANDED OFF' : 'REEL · SELECTION';
-  if (current.kind === 'wireframe') return current.edits ? `SITE · ${current.edits} EDIT${current.edits === 1 ? '' : 'S'}` : 'SITE · SKETCH';
+  if (current.kind === 'wireframe') return current.edits ? `LAYOUT · ${current.edits} EDIT${current.edits === 1 ? '' : 'S'}` : 'LAYOUT · SKETCH';
+  if (current.kind === 'sheet') return current.edits ? `SHEET · ${current.edits} EDIT${current.edits === 1 ? '' : 'S'}` : 'SHEET';
+  if (current.kind === 'drawing') return 'DRAWING';
+  if (current.kind === 'pen') return 'YOUR SKETCH';
   return 'CANVAS';
 }
 
@@ -63,13 +77,18 @@ export function open(k, data) {
   if (k === 'chart') renderChart(plane, data);
   else if (k === 'reel') renderReel(plane, data);
   else if (k === 'wireframe') renderWireframe(plane, data);
+  else if (k === 'sheet') renderSheet(plane, data);
+  else if (k === 'drawing') renderDrawing(plane, data);
+  else if (k === 'pen') renderPen(plane, data);
   if (!skipMovement()) { try { gsap.fromTo(root, { opacity: 0 }, { opacity: 1, duration: 0.9, ease: EASE.out }); } catch (_) {} }
 }
 
 function headTitle() {
-  if (current.kind === 'chart') return current.data.title || 'On the canvas';
-  if (current.kind === 'reel') return `Images · ${current.data.query || 'gathered'}`;
-  return 'Sketch · ' + (current.data.subject || 'the site');
+  const d = current.data || {};
+  if (current.kind === 'reel') return `Images · ${d.query || 'gathered'}`;
+  if (current.kind === 'wireframe') return 'Layout · ' + (d.subject || 'the site');
+  if (current.kind === 'pen') return 'Your sketch · draw, then hand it to Alfred';
+  return d.title || 'On the canvas';
 }
 
 export function close() {
@@ -146,10 +165,25 @@ function placeholder(i) {
   return 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 90 120"><rect width="90" height="120" fill="#2a2520"/><rect x=".5" y=".5" width="89" height="119" fill="none" stroke="rgba(233,230,224,.3)"/>${lines}</svg>`);
 }
 
-function renderReel(plane, data) {
-  const imgs = gatherImages(data.query, DEMO_MODE ? 12 : 12);
+async function renderReel(plane, data) {
+  plane.innerHTML = '<p class="label ws-quiet">Gathering.</p>';
+  const mine = current;
+  let imgs, credit = '';
+  if (DEMO_MODE) imgs = gatherImages(data.query);
+  else {
+    try {
+      imgs = await searchImages(state.token, data.query || 'workspace');
+      credit = 'Photographs: Unsplash';
+    } catch (e) {
+      if (current !== mine) return;
+      plane.innerHTML = `<p class="label ws-quiet">${escapeHtml(e.message || 'Image search is unavailable.')}</p>`;
+      return;
+    }
+  }
+  if (current !== mine) return;
+  if (!imgs.length) { plane.innerHTML = '<p class="label ws-quiet">Nothing came back for that. Try other words.</p>'; return; }
   plane.innerHTML = `<div class="reel" id="reel"></div><div class="reel-tray" id="reelTray" aria-label="Kept frames"></div>
-    <div class="reel-act"><span class="label" id="reelCount">Select the frames to keep</span><button type="button" class="act" id="reelKeep" disabled>Keep these ›</button></div>`;
+    <div class="reel-act"><span class="label" id="reelCount">Select the frames to keep</span><span class="label">${credit}</span><button type="button" class="act" id="reelKeep" disabled>Keep these ›</button></div>`;
   const reel = plane.querySelector('#reel');
   const W = plane.clientWidth, H = plane.clientHeight;
   imgs.forEach((im, i) => {
@@ -157,7 +191,8 @@ function renderReel(plane, data) {
     b.type = 'button';
     b.className = 'frame';
     b.setAttribute('aria-pressed', 'false');
-    b.setAttribute('aria-label', `Frame ${i + 1}`);
+    b.setAttribute('aria-label', im.alt ? `Frame ${i + 1}: ${im.alt}` : `Frame ${i + 1}`);
+    if (im.author) b.title = `Photograph by ${im.author}`;
     // Scattered, not gridded: a loose field across the plane.
     const col = i % 6, row = Math.floor(i / 6);
     const x = (col + 0.5) / 6 * W + (Math.sin(i * 7.3) * W) / 28;
@@ -337,4 +372,166 @@ function edited(what) {
     const line = hero && hero.w > 0.6 ? 'The opening statement takes the full width now, so the product moves below it.' : `I have ${current.edits} change${current.edits === 1 ? '' : 's'} noted.`;
     remark(`${line} Tell me when it is right and I will build it.`);
   }, 1800);
+}
+
+/* ---------------- sheet ---------------- */
+
+function renderSheet(plane, data) {
+  const sheet = createSheet(data.columns, data.rows);
+  plane.innerHTML = `<div class="sheet-wrap"><table class="sheet" aria-label="${escapeHtml(data.title || 'Sheet')}">
+    <thead><tr><th class="sheet-corner" aria-hidden="true"></th>${data.columns.map((c, i) => `<th scope="col"><span class="sheet-col">${colName(i)}</span>${escapeHtml(c)}</th>`).join('')}</tr></thead>
+    <tbody></tbody></table></div><p class="sheet-hint label">Click a value to change it · formulas start with =</p>`;
+  const body = plane.querySelector('tbody');
+  const paint = () => {
+    body.innerHTML = Array.from({ length: sheet.rows }, (_, r) => `<tr><th scope="row" class="sheet-rn">${r + 1}</th>${data.columns.map((_, c) => {
+      const raw = sheet.raw(r, c);
+      const v = sheet.value(r, c);
+      const isF = typeof raw === 'string' && raw.startsWith('=');
+      const cls = [typeof v === 'number' ? 'num' : '', isF ? 'formula' : '', typeof v === 'string' && v.startsWith('#') ? 'err' : ''].join(' ').trim();
+      return `<td class="${cls}" tabindex="0" data-r="${r}" data-c="${c}"${isF ? ` title="${escapeHtml(raw)}"` : ''}>${escapeHtml(String(formatCell(v)))}</td>`;
+    }).join('')}</tr>`).join('');
+  };
+  paint();
+  const edit = (td) => {
+    const r = +td.dataset.r, c = +td.dataset.c;
+    const raw = sheet.raw(r, c);
+    const input = document.createElement('input');
+    input.className = 'sheet-input';
+    input.value = raw == null ? '' : String(raw);
+    input.setAttribute('aria-label', `${colName(c)}${r + 1}`);
+    td.textContent = '';
+    td.appendChild(input);
+    input.focus(); input.select();
+    let done = false;
+    const commit = (keep) => {
+      if (done) return;
+      done = true;
+      if (keep) {
+        const t = input.value.trim();
+        const n = Number(t.replace(/,/g, ''));
+        sheet.set(r, c, t === '' ? '' : t.startsWith('=') ? t.toUpperCase() : Number.isFinite(n) ? n : t);
+        current.edits += 1;
+      }
+      paint();
+      body.querySelector(`td[data-r="${r}"][data-c="${c}"]`)?.focus();
+    };
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); commit(true); }
+      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); commit(false); }
+    });
+    input.addEventListener('blur', () => commit(true));
+  };
+  body.addEventListener('click', (e) => { const td = e.target.closest('td'); if (td && !td.querySelector('input')) edit(td); });
+  body.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.matches('td')) { e.preventDefault(); edit(e.target); } });
+  if (!skipMovement()) { try { gsap.from(body.querySelectorAll('tr'), { opacity: 0, duration: 0.7, ease: EASE.out, stagger: 0.04 }); } catch (_) {} }
+}
+
+/* ---------------- Alfred draws ---------------- */
+
+const SVGNS = 'http://www.w3.org/2000/svg';
+
+function renderDrawing(plane, data) {
+  plane.innerHTML = `<svg class="drawing" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet" role="img" aria-label="${escapeHtml(data.title || 'Drawing')}"><defs><marker id="dArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,1 L9,5 L0,9" fill="none" stroke="rgba(233,230,224,.8)" stroke-width="1.2"/></marker></defs></svg>`;
+  const svg = plane.querySelector('svg');
+  const el = (tag, attrs, text) => {
+    const n = document.createElementNS(SVGNS, tag);
+    Object.entries(attrs).forEach(([k, v]) => n.setAttribute(k, v));
+    if (text) n.textContent = text;
+    svg.appendChild(n);
+    return n;
+  };
+  const strokes = [];
+  data.shapes.forEach((s) => {
+    if (s.kind === 'rect') {
+      strokes.push(el('rect', { x: s.x, y: s.y, width: s.w, height: s.h, class: 'd-stroke', pathLength: 1 }));
+      if (s.label) el('text', { x: s.x + s.w / 2, y: s.y + s.h / 2 + 1, class: 'd-label', 'text-anchor': 'middle' }, s.label);
+    } else if (s.kind === 'line' || s.kind === 'arrow') {
+      strokes.push(el('line', { x1: s.x1, y1: s.y1, x2: s.x2, y2: s.y2, class: 'd-stroke', pathLength: 1, ...(s.kind === 'arrow' ? { 'marker-end': 'url(#dArrow)' } : {}) }));
+    } else if (s.kind === 'circle') {
+      strokes.push(el('circle', { cx: s.x, cy: s.y, r: s.r, class: 'd-stroke', pathLength: 1 }));
+      if (s.label) el('text', { x: s.x, y: s.y + s.r + 4, class: 'd-label', 'text-anchor': 'middle' }, s.label);
+    } else if (s.kind === 'text') {
+      el('text', { x: s.x, y: s.y, class: 'd-note' }, s.text);
+    }
+  });
+  if (skipMovement()) return;
+  // Stroke by stroke, in order, as if drawn by hand.
+  try {
+    const tl = gsap.timeline({ onComplete: () => gsap.set(strokes, { clearProps: 'strokeDasharray,strokeDashoffset' }) });
+    strokes.forEach((s, i) => tl.fromTo(s, { strokeDasharray: 1, strokeDashoffset: 1 }, { strokeDashoffset: 0, duration: 0.55, ease: EASE.out }, i * 0.32));
+    tl.fromTo(svg.querySelectorAll('text'), { opacity: 0 }, { opacity: 1, duration: 0.6, ease: EASE.out, stagger: 0.12 }, 0.4);
+  } catch (_) {}
+}
+
+/* ---------------- You draw first ---------------- */
+
+function renderPen(plane) {
+  plane.innerHTML = `<canvas class="pen" id="pen" aria-label="Drawing surface. Draw with the mouse, a pen, or a finger."></canvas>
+    <div class="pen-act"><button type="button" class="act" id="penUndo">Undo</button><button type="button" class="act" id="penClear">Clear</button>
+    <span class="label pen-status" id="penStatus" aria-live="polite">Draw what you have in mind</span><button type="button" class="act gold-act" id="penRead" disabled>Hand it to Alfred ›</button></div>`;
+  const cv = plane.querySelector('#pen');
+  const ctx = cv.getContext('2d');
+  const strokes = [];
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const redraw = () => {
+    const r = cv.getBoundingClientRect();
+    ctx.clearRect(0, 0, r.width, r.height);
+    ctx.strokeStyle = 'rgba(233,230,224,0.9)';
+    ctx.lineWidth = 1.5; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    strokes.forEach((s) => {
+      ctx.beginPath();
+      s.forEach((p, i) => (i ? ctx.lineTo(p.x * r.width, p.y * r.height) : ctx.moveTo(p.x * r.width, p.y * r.height)));
+      ctx.stroke();
+    });
+  };
+  const fit = () => {
+    const r = cv.getBoundingClientRect();
+    cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    redraw();
+  };
+  const sync = () => { plane.querySelector('#penRead').disabled = !strokes.length; };
+  const pt = (e) => { const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height }; };
+  cv.addEventListener('pointerdown', (e) => {
+    cv.setPointerCapture(e.pointerId);
+    const s = [pt(e)];
+    strokes.push(s);
+    const move = (ev) => { s.push(pt(ev)); redraw(); };
+    const up = () => { cv.removeEventListener('pointermove', move); sync(); };
+    cv.addEventListener('pointermove', move);
+    cv.addEventListener('pointerup', up, { once: true });
+    cv.addEventListener('pointercancel', up, { once: true });
+  });
+  plane.querySelector('#penUndo').addEventListener('click', () => { strokes.pop(); redraw(); sync(); });
+  plane.querySelector('#penClear').addEventListener('click', () => { strokes.length = 0; redraw(); sync(); });
+  plane.querySelector('#penRead').addEventListener('click', () => readDrawing(cv, strokes));
+  new ResizeObserver(fit).observe(cv);
+}
+
+async function readDrawing(cv, strokes) {
+  const status = qs('#penStatus');
+  const btn = qs('#penRead');
+  btn.disabled = true;
+  status.textContent = 'Alfred is reading it';
+  setFieldState('processing');
+  // Export ink on a matte ground, so the model sees a drawing, not alpha.
+  const out = document.createElement('canvas');
+  out.width = cv.width; out.height = cv.height;
+  const o = out.getContext('2d');
+  o.fillStyle = '#050403';
+  o.fillRect(0, 0, out.width, out.height);
+  o.drawImage(cv, 0, 0);
+  const hint = qs('#intent')?.value.trim() || '';
+  let reply;
+  try {
+    reply = await interpretDrawing(state.token, out.toDataURL('image/png'), hint, strokes);
+  } catch (e) {
+    setFieldState('workspace');
+    status.textContent = e.message || 'I could not read that.';
+    btn.disabled = false;
+    return;
+  }
+  setFieldState('workspace');
+  openViz(reply.visualization);
+  remark(reply.text);
 }

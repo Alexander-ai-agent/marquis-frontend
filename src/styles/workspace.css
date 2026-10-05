@@ -50,6 +50,37 @@
 .region-note-input{ position:relative; margin-top:8px; width:100%; font-size:12px; padding:4px 0; border-bottom:1px solid rgba(255,255,255,.45); }
 .wire-hint{ position:absolute; left:0; bottom:0; }
 
+/* sheet: a ruled ledger you can edit */
+.sheet-wrap{ position:absolute; inset:0 0 34px 0; overflow:auto; }
+.sheet{ border-collapse:collapse; font-size:13px; min-width:100%; }
+.sheet th{ font-weight:400; font-size:var(--fs-label); text-transform:uppercase; letter-spacing:var(--track-label); color:var(--ink-3); text-align:right; padding:0 18px 10px; white-space:nowrap; }
+.sheet th:nth-child(2){ text-align:left; }
+.sheet-col{ display:block; color:var(--ink-4); margin-bottom:3px; }
+.sheet-corner{ width:28px; }
+.sheet-rn{ color:var(--ink-4) !important; text-align:left !important; padding-left:0 !important; width:28px; }
+.sheet td{ padding:9px 18px; border-top:1px solid var(--rule); color:var(--ink-2); text-align:right; white-space:nowrap; cursor:text; outline:none; transition:color var(--dur-hover) var(--ease); }
+.sheet td:first-of-type{ text-align:left; color:var(--ink); }
+.sheet td.formula{ color:var(--ink); }
+.sheet tbody tr:has(td.formula) td{ border-top-color:var(--rule-strong); }
+.sheet td.err{ color:var(--ink-3); }
+.sheet td:hover, .sheet td:focus-visible{ color:var(--ink); box-shadow:inset 0 -1px 0 var(--gold-2); }
+.sheet-input{ width:100%; min-width:70px; text-align:inherit; font-size:13px; color:var(--ink); border-bottom:1px solid var(--gold); }
+.sheet-hint{ position:absolute; left:0; bottom:0; }
+
+/* Alfred draws */
+.drawing{ position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
+/* Stroke width in board units (no non-scaling-stroke: it breaks the
+   pathLength-based draw-on dash in Chromium). ~1px at typical sizes. */
+.d-stroke{ fill:none; stroke:rgba(233,230,224,.8); stroke-width:.2; }
+.d-label{ font-family:var(--mono); font-size:1.9px; fill:var(--ink-2); letter-spacing:-0.02em; }
+.d-note{ font-family:var(--serif); font-style:italic; font-size:3.4px; fill:var(--gold); }
+
+/* you draw first */
+.pen{ position:absolute; inset:0 0 40px 0; width:100%; height:calc(100% - 40px); cursor:crosshair; touch-action:none;
+  border:1px dashed var(--rule-strong); }
+.pen-act{ position:absolute; left:0; right:0; bottom:0; display:flex; align-items:baseline; gap:22px; }
+.pen-status{ margin-left:auto; }
+
 @media (max-width:640px){
   .workspace{ padding:28px 18px 0 18px; bottom:190px; }
   .frame{ width:56px; }
