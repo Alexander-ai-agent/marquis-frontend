@@ -111,6 +111,13 @@ function drawOn(svg, delay) {
     }
     tl.fromTo(n, { fillOpacity: 0 }, { fillOpacity: 1, duration: 0.7, ease: EASE.out, immediateRender: true, clearProps: 'fillOpacity' }, at + 0.35);
   });
+  // Animation frames can stall (a background tab, a throttled pane); the
+  // work must never be left half-drawn. Settle it once it should be done.
+  setTimeout(() => {
+    tl.kill();
+    gsap.set(marks, { clearProps: 'strokeDasharray,strokeDashoffset,fillOpacity' });
+    stroked.forEach((n) => n.removeAttribute('pathLength'));
+  }, (delay + tl.duration()) * 1000 + 1200);
 }
 
 export function renderDesign(plane, data) {
@@ -144,12 +151,10 @@ export function renderDesign(plane, data) {
       card.style.setProperty('--mx', `${((e.clientX - r.left) / r.width) * 100}%`);
       card.style.setProperty('--my', `${((e.clientY - r.top) / r.height) * 100}%`);
     });
+    card.style.setProperty('--i', i);
     grid.appendChild(card);
     if (!skipMovement()) {
-      try {
-        gsap.from(card, { opacity: 0, y: 22, duration: 0.9, ease: EASE.out, delay: i * 0.12, clearProps: 'opacity,transform' });
-        drawOn(svg, 0.3 + i * 0.25);
-      } catch (_) {}
+      try { drawOn(svg, 0.3 + i * 0.25); } catch (_) {}
     }
   });
 }

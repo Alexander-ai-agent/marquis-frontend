@@ -46,6 +46,9 @@
 }
 .glass:hover::before, .glass:focus-visible::before{ opacity:1; }
 .glass:focus-visible{ outline:none; }
+/* Cards arrive by CSS (not script) so they always finish arriving. */
+.src-card, .design-card{ animation:card-in 900ms var(--ease) backwards; animation-delay:calc(var(--i, 0) * 90ms + 150ms); }
+@keyframes card-in{ from{ opacity:0; transform:translateY(18px); } }
 
 /* ---------- sources: what Alfred read ---------- */
 .sources{

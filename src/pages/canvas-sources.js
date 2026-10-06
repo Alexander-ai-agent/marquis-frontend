@@ -3,9 +3,6 @@
 // his subtitles lights its card. Links open in a new tab, http(s) only.
 
 import { escapeHtml } from '../lib/dom.js';
-import { skipMovement, EASE } from '../lib/motion.js';
-
-const gsap = window.gsap;
 
 function safeUrl(url) {
   try {
@@ -37,9 +34,8 @@ export function renderSources(host, sources, { strip = false } = {}) {
     card.style.setProperty('--mx', `${((e.clientX - r.left) / r.width) * 100}%`);
     card.style.setProperty('--my', `${((e.clientY - r.top) / r.height) * 100}%`);
   });
-  if (!skipMovement()) {
-    try { gsap.from(list.children, { opacity: 0, y: 16, duration: 0.8, ease: EASE.out, stagger: 0.07, delay: 0.2, clearProps: 'all' }); } catch (_) {}
-  }
+  // Entrance is a CSS animation (card-in), staggered by --i.
+  [...list.children].forEach((c, i) => c.style.setProperty('--i', i));
   return list;
 }
 
