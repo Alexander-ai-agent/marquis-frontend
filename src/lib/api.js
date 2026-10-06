@@ -124,6 +124,7 @@ async function realConversation(token, message, conversationHistory) {
     visualization: data.visualization || null,
     workspace: data.workspace || null,
     sources: Array.isArray(data.sources) ? data.sources : [],
+    design: data.design && typeof data.design.brief === 'string' ? data.design : null,
   };
 }
 
@@ -248,6 +249,21 @@ export async function searchImages(token, query) {
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || 'Image search is unavailable.');
   return data.images || [];
+}
+
+const DESIGN_TIMEOUT_MS = 150000; // a finished composition takes the designer a while
+
+/** The designer realises a brief Alfred handed over (backend /canvas/design). */
+export async function designCanvas(token, brief) {
+  if (DEMO_MODE) throw new Error('The designer works with the live service only.');
+  const res = await fetchWithTimeout(`${API_BASE}/canvas/design`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ brief }),
+  }, DESIGN_TIMEOUT_MS);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.visualization) throw new Error(data.error || 'The designer is unavailable right now.');
+  return { text: data.butler_response || '', visualization: data.visualization };
 }
 
 /** Alfred's line as speech (backend /voice, Fish Audio). Returns an MP3

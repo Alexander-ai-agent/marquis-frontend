@@ -19,15 +19,30 @@ import { setFieldState } from '../lib/field.js';
 import { DEMO_MODE, searchImages, interpretDrawing } from '../lib/api.js';
 import { state } from '../lib/state.js';
 import { createSheet, colName, formatCell } from '../lib/sheet.js';
+import { renderDesign, renderDrafting, failDrafting } from './canvas-design.js';
+import { renderSources, citeSource } from './canvas-sources.js';
 
-/** Route a /conversation `visualization` block to the right workspace. */
-export function openViz(viz) {
-  if (viz.type === 'sheet') open('sheet', viz);
-  else if (viz.type === 'drawing') open('drawing', viz);
-  else if (viz.type === 'blueprint') open('wireframe', { subject: viz.title, regions: viz.regions });
-  else if (viz.type === 'images') open('reel', { query: viz.query, title: viz.title });
-  else open('chart', viz);
+/** Route a /conversation `visualization` block to the right workspace.
+ * `sources` (web pages Alfred read) ride along under the block. */
+export function openViz(viz, { sources } = {}) {
+  const opts = { sources };
+  if (viz.type === 'sheet') open('sheet', viz, opts);
+  else if (viz.type === 'drawing') open('drawing', viz, opts);
+  else if (viz.type === 'design') open('design', viz, opts);
+  else if (viz.type === 'blueprint') open('wireframe', { subject: viz.title, regions: viz.regions }, opts);
+  else if (viz.type === 'images') open('reel', { query: viz.query, title: viz.title }, opts);
+  else open('chart', viz, opts);
 }
+
+/** Only the web pages Alfred read, when nothing else needs drawing. */
+export function openSources(sources) {
+  open('sources', { title: 'What I read on your behalf', sources });
+}
+
+/** The designer is at work on `brief`; show the drafting table. */
+export function openDrafting(brief) { open('drafting', { brief, title: 'At the drafting table' }); }
+export function isDrafting(brief) { return current?.kind === 'drafting' && current.data.brief === brief; }
+export function draftingFailed(message) { if (current?.kind === 'drafting') failDrafting(root.querySelector('#wsPlane'), message); }
 
 const gsap = window.gsap;
 let root;
@@ -51,6 +66,9 @@ export function label() {
   if (current.kind === 'wireframe') return current.edits ? `LAYOUT · ${current.edits} EDIT${current.edits === 1 ? '' : 'S'}` : 'LAYOUT · SKETCH';
   if (current.kind === 'sheet') return current.edits ? `SHEET · ${current.edits} EDIT${current.edits === 1 ? '' : 'S'}` : 'SHEET';
   if (current.kind === 'drawing') return 'DRAWING';
+  if (current.kind === 'design') return `DESIGN · ${current.data.variants.length} CONCEPT${current.data.variants.length === 1 ? '' : 'S'}`;
+  if (current.kind === 'drafting') return 'DESIGN · DRAFTING';
+  if (current.kind === 'sources') return `READING · ${current.data.sources.length} SOURCES`;
   if (current.kind === 'pen') return 'YOUR SKETCH';
   return 'CANVAS';
 }
@@ -62,14 +80,17 @@ export function initWorkspace() {
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && current && !/^(INPUT|TEXTAREA)$/.test(e.target.tagName)) close();
   });
+  // Hovering a citation in Alfred's subtitles lights its source card.
+  document.addEventListener('marquis:cite', (e) => citeSource(root, e.detail.n, e.detail.on));
 }
 
-export function open(k, data) {
+export function open(k, data, { sources } = {}) {
+  const wasOpen = Boolean(current);
   if (current) teardown();
   current = { kind: k, data, stage: 'select', edits: 0 };
   root.hidden = false;
   root.dataset.kind = k;
-  root.innerHTML = `<div class="ws-head"><span class="label ws-title">${escapeHtml(headTitle())}</span><button type="button" class="act ws-close">Set aside ×</button></div><div class="ws-plane" id="wsPlane"></div>`;
+  root.innerHTML = `<div class="ws-head"><span class="ws-headline"><span class="ws-live" aria-hidden="true"></span><span class="label ws-title">${escapeHtml(headTitle())}</span><span class="label ws-kind">${escapeHtml(label())}</span></span><button type="button" class="act ws-close">Set aside ×</button></div><div class="ws-plane" id="wsPlane"></div>`;
   root.querySelector('.ws-close').addEventListener('click', close);
   document.body.dataset.workspace = k;
   setFieldState('workspace');
@@ -80,7 +101,11 @@ export function open(k, data) {
   else if (k === 'sheet') renderSheet(plane, data);
   else if (k === 'drawing') renderDrawing(plane, data);
   else if (k === 'pen') renderPen(plane, data);
-  if (!skipMovement()) { try { gsap.fromTo(root, { opacity: 0 }, { opacity: 1, duration: 0.9, ease: EASE.out }); } catch (_) {} }
+  else if (k === 'design') renderDesign(plane, data);
+  else if (k === 'drafting') renderDrafting(plane, data);
+  else if (k === 'sources') renderSources(plane, data.sources);
+  if (k !== 'sources' && sources?.length) renderSources(root, sources, { strip: true });
+  if (!skipMovement() && !wasOpen) { try { gsap.fromTo(root, { opacity: 0 }, { opacity: 1, duration: 0.9, ease: EASE.out }); } catch (_) {} }
 }
 
 function headTitle() {
@@ -111,7 +136,7 @@ function teardown() {
 
 /** A step of a workspace flow typed into Alfred's input, handled here
  * rather than by the backend. Returns { text, label } or null. */
-const NEW_REQUEST = /\b(website|site|landing page|reel|instagram|chart|revenue|phase|pricing|show me|sketch|draw)\b/i;
+const NEW_REQUEST = /\b(website|site|landing page|reel|instagram|chart|revenue|phase|pricing|show me|sketch|draw|design|logo|mark|icon|poster)\b/i;
 
 export function intercept(text) {
   if (NEW_REQUEST.test(text) && !(current?.kind === 'wireframe' && /\b(build|go ahead|proceed)\b/i.test(text))) return null;

@@ -1,24 +1,39 @@
-// Alfred's voice: the typewriter reveal (brief §3: ~38ms per character, no
-// acceleration) and speech out. The browser only allows speech after the
-// visitor has interacted with the page, so the very first greeting is
-// read, not heard; every reply after a keystroke or click is spoken.
+// Alfred's voice: the typewriter reveal and speech out.
+//
+// A reply is narrated sentence by sentence. Fish Audio clips are requested
+// for the first sentences at once and for the rest just ahead of need, so
+// he begins speaking a moment after the reply lands rather than after the
+// whole reply has been synthesised. Each sentence's subtitles type at the
+// pace of its own clip, so the words on screen keep time with the voice.
+// The browser's own speech is the fallback; with voice off (or before the
+// visitor has interacted, which browsers require) the text simply types.
 
 import { prefersReduced } from './motion.js';
 import { state } from './state.js';
 import { DEMO_MODE, synthesizeSpeech } from './api.js';
 
 export const MS_PER_CHAR = 38;
+const BROWSER_MS_PER_CHAR = 62;   // the browser voice at rate 0.9
+const FIRST_CLIP_WAIT_MS = 7000;  // after this, fall back rather than keep him silent
+const NEXT_CLIP_WAIT_MS = 20000;
+const PREFETCH = 3;
+const FISH_COOLDOWN_MS = 60000;   // after a failure, don't make every reply wait on it
 
 let activated = false;
-['pointerdown', 'keydown'].forEach((ev) => window.addEventListener(ev, () => { activated = true; }, { once: true, capture: true }));
+let audioCtx = null;
+['pointerdown', 'keydown'].forEach((ev) => window.addEventListener(ev, () => {
+  activated = true;
+  try { audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)(); } catch (_) { audioCtx = null; }
+}, { once: true, capture: true }));
 
 /** Reveal text into el at a constant rate. Calls onWord(word) as each word
- * completes. Resolves when done; a newer call on the same el cancels it. */
-export function typewrite(el, text, { onWord } = {}) {
+ * completes and onChar() after each character. Resolves when done; a newer
+ * call on the same el (or el._typeToken = null) cancels it. */
+export function typewrite(el, text, { onWord, onChar, msPerChar = MS_PER_CHAR } = {}) {
   const token = Symbol('type');
   el._typeToken = token;
   text = String(text || '');
-  if (prefersReduced) { el.textContent = text; return Promise.resolve(); }
+  if (prefersReduced) { el.textContent = text; onChar?.(); return Promise.resolve(); }
   return new Promise((resolve) => {
     let i = 0;
     let word = '';
@@ -27,12 +42,157 @@ export function typewrite(el, text, { onWord } = {}) {
       if (el._typeToken !== token) return resolve();
       const ch = text[i];
       el.textContent += ch;
+      onChar?.();
       if (/\s/.test(ch)) { if (word) onWord?.(word); word = ''; } else word += ch;
       i += 1;
-      if (i < text.length) setTimeout(tick, MS_PER_CHAR);
+      if (i < text.length) setTimeout(tick, msPerChar);
       else { if (word) onWord?.(word); resolve(); }
     };
     if (text.length) tick(); else resolve();
+  });
+}
+
+/* ---------------- sentences ---------------- */
+
+const MIN_LINE = 40;
+const MAX_LINE = 240;
+
+/** Split a reply into speakable lines: sentences, short ones merged, very
+ * long ones broken at a comma or dash near the middle. */
+export function splitLines(text) {
+  const clean = String(text || '').replace(/\*\*|__/g, '').replace(/\s+/g, ' ').trim();
+  if (!clean) return [];
+  // A citation after the full stop ("…a year. [1] Runna…") stays with its sentence.
+  const sentences = clean.replace(/([.!?…])((?:\s*\[\d+\])+)/g, '$2$1')
+    .split(/(?<=[.!?…])\s+(?=["“'(]?[A-Z0-9])/);
+  const merged = [];
+  sentences.forEach((s) => {
+    if (merged.length && merged[merged.length - 1].length < MIN_LINE) merged[merged.length - 1] += ` ${s}`;
+    else merged.push(s);
+  });
+  return merged.flatMap((s) => {
+    if (s.length <= MAX_LINE) return [s];
+    const mid = s.length / 2;
+    const cuts = [...s.matchAll(/[,;—–] /g)].map((m) => m.index + 1);
+    const cut = cuts.sort((a, b) => Math.abs(a - mid) - Math.abs(b - mid))[0];
+    return cut ? [s.slice(0, cut).trim(), s.slice(cut).trim()] : [s];
+  });
+}
+
+/** What is said aloud: citations and stray markup are for the eye only. */
+const spoken = (line) => line.replace(/\s?\[\d+\]/g, '').replace(/[*_#`]/g, '');
+
+/* ---------------- narration ---------------- */
+
+let narration = 0;          // bumps on every new narration or silence()
+let stopCurrent = null;     // resolves the clip or utterance in progress
+let fishOffUntil = 0;
+
+const canSpeak = () => state.voiceOn && activated;
+const fishReady = () => !DEMO_MODE && Boolean(state.token) && Date.now() > fishOffUntil;
+const withTimeout = (p, ms) => Promise.race([p, new Promise((r) => setTimeout(() => r(null), ms))]);
+
+/**
+ * Narrate `text`. `type(line, msPerChar, onWord)` must append one line of
+ * subtitles and resolve when typed. Callbacks: onStart() as the first line
+ * begins, onLevel(0-1) with the live loudness, onWord(word) per word when
+ * there is no live loudness. Resolves when done or silenced.
+ */
+export async function narrate(text, { type, onStart, onLevel, onWord } = {}) {
+  const id = ++narration;
+  stopPlayback();
+  const lines = splitLines(text);
+  if (!lines.length) { onStart?.(); return; }
+  let from = 0;
+  if (canSpeak() && fishReady()) {
+    from = await narrateFish(id, lines, { type, onStart, onLevel });
+    if (from >= lines.length || id !== narration) return;
+  }
+  const rest = lines.slice(from);
+  if (canSpeak() && window.speechSynthesis) await narrateBrowser(id, rest, { type, onStart, onWord, first: from === 0 });
+  else {
+    if (from === 0) onStart?.();
+    for (const line of rest) {
+      if (id !== narration) return;
+      await type(line, MS_PER_CHAR, onWord);
+    }
+  }
+}
+
+/** Returns the index of the first line it could not speak (lines.length when all spoken). */
+async function narrateFish(id, lines, { type, onStart, onLevel }) {
+  const clips = [];
+  const fetchClip = (i) => {
+    if (i >= lines.length) return null;
+    clips[i] = clips[i] || synthesizeSpeech(state.token, spoken(lines[i])).catch(() => null);
+    return clips[i];
+  };
+  for (let i = 0; i < PREFETCH; i += 1) fetchClip(i);
+  for (let i = 0; i < lines.length; i += 1) {
+    const blob = await withTimeout(fetchClip(i), i === 0 ? FIRST_CLIP_WAIT_MS : NEXT_CLIP_WAIT_MS);
+    if (id !== narration) return lines.length;
+    if (!blob) { fishOffUntil = Date.now() + FISH_COOLDOWN_MS; return i; }
+    fetchClip(i + PREFETCH);
+    const clip = await loadClip(blob, lines[i]);
+    if (id !== narration) { URL.revokeObjectURL(clip.el.src); return lines.length; }
+    if (i === 0) onStart?.();
+    const msPerChar = Math.max(22, Math.min(95, (clip.duration * 1000) / Math.max(lines[i].length, 1)));
+    const played = playClip(clip, onLevel);
+    await Promise.all([played, type(lines[i], msPerChar)]);
+    if (!(await played) && id === narration) return i + 1; // playback refused: carry on in the browser voice
+  }
+  return lines.length;
+}
+
+function loadClip(blob, line) {
+  const el = new Audio(URL.createObjectURL(blob));
+  el.preload = 'auto';
+  return new Promise((resolve) => {
+    const done = () => resolve({ el, duration: Number.isFinite(el.duration) && el.duration > 0 ? el.duration : line.length * 0.065 });
+    el.addEventListener('loadedmetadata', done, { once: true });
+    el.addEventListener('error', done, { once: true });
+    setTimeout(done, 1500);
+  });
+}
+
+/** Play one clip, reporting loudness. Resolves true when it played through. */
+function playClip({ el }, onLevel) {
+  return new Promise((resolve) => {
+    let raf = 0, source = null, settled = false;
+    const finish = (ok) => {
+      if (settled) return;
+      settled = true;
+      cancelAnimationFrame(raf);
+      try { source?.disconnect(); } catch (_) {}
+      el.pause();
+      URL.revokeObjectURL(el.src);
+      if (stopCurrent === stop) stopCurrent = null;
+      resolve(ok);
+    };
+    const stop = () => finish(true);
+    stopCurrent = stop;
+    if (audioCtx && onLevel) {
+      try {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        source = audioCtx.createMediaElementSource(el);
+        const analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 512;
+        source.connect(audioCtx.destination);
+        source.connect(analyser);
+        const buf = new Uint8Array(analyser.fftSize);
+        const meter = () => {
+          analyser.getByteTimeDomainData(buf);
+          let sum = 0;
+          for (let k = 0; k < buf.length; k += 1) { const v = (buf[k] - 128) / 128; sum += v * v; }
+          onLevel(Math.min(1, Math.sqrt(sum / buf.length) * 4));
+          raf = requestAnimationFrame(meter);
+        };
+        raf = requestAnimationFrame(meter);
+      } catch (_) { /* no meter; the clip still plays directly */ }
+    }
+    el.addEventListener('ended', () => finish(true), { once: true });
+    el.addEventListener('error', () => finish(false), { once: true });
+    el.play().catch(() => finish(false));
   });
 }
 
@@ -49,69 +209,54 @@ if (window.speechSynthesis) {
   speechSynthesis.addEventListener?.('voiceschanged', pickVoice);
 }
 
-// Fish Audio first (a real, composed British voice); the browser's own
-// speech is the fallback, so Alfred is never silent when voice is on.
-const MAX_SPEECH_CHARS = 1500;
-let audio = null;
-let speechToken = 0;
-
-function stopAudio() {
-  speechToken += 1;
-  if (audio) { audio.pause(); URL.revokeObjectURL(audio.src); audio = null; }
-}
-
-/** Pulse onWord once per word, spread across the clip's duration. */
-function pulseAcross(el, words, onWord, token) {
-  const step = (el.duration * 1000) / Math.max(words.length, 1);
-  words.forEach((w, i) => setTimeout(() => { if (token === speechToken) onWord?.(w); }, i * step));
-}
-
-async function speakFish(text, { onWord, onEnd }, token) {
-  const blob = await synthesizeSpeech(state.token, text);
-  if (!blob || token !== speechToken) return Boolean(blob);
-  const el = new Audio(URL.createObjectURL(blob));
-  audio = el;
-  el.addEventListener('playing', () => pulseAcross(el, text.split(/\s+/), onWord, token), { once: true });
-  el.addEventListener('ended', () => { if (token === speechToken) { stopAudio(); onEnd?.(); } }, { once: true });
-  await el.play();
-  return true;
-}
-
-/** Speak if allowed. Returns true when speech actually started (or is
- * starting: the Fish Audio clip may arrive a moment after the text). */
-export function speak(text, opts = {}) {
-  if (!state.voiceOn || !activated) return false;
-  stopAudio();
-  const token = speechToken;
-  const line = String(text);
-  if (state.token && !DEMO_MODE && line.length <= MAX_SPEECH_CHARS) {
-    speakFish(line, opts, token)
-      .then((ok) => { if (!ok && token === speechToken) speakBrowser(line, opts); })
-      .catch(() => { if (token === speechToken) speakBrowser(line, opts); });
-    return true;
+async function narrateBrowser(id, lines, { type, onStart, onWord, first }) {
+  for (let i = 0; i < lines.length; i += 1) {
+    if (id !== narration) return;
+    const line = lines[i];
+    await new Promise((resolve) => {
+      let typed = null;
+      let settled = false;
+      const end = () => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(safety);
+        if (stopCurrent === end) stopCurrent = null;
+        Promise.resolve(typed).then(resolve);
+      };
+      const safety = setTimeout(end, line.length * 140 + 3000); // some engines never fire onend
+      stopCurrent = end;
+      try {
+        const u = new SpeechSynthesisUtterance(spoken(line));
+        u.rate = 0.9; u.pitch = 0.82;
+        if (preferredVoice) u.voice = preferredVoice;
+        u.onstart = () => {
+          if (first && i === 0) onStart?.();
+          typed = type(line, BROWSER_MS_PER_CHAR);
+        };
+        u.onboundary = (e) => {
+          if (e.name && e.name !== 'word') return;
+          onWord?.(spoken(line).slice(e.charIndex).split(/\s/)[0] || '');
+        };
+        u.onend = u.onerror = end;
+        speechSynthesis.speak(u);
+      } catch (_) {
+        if (first && i === 0) onStart?.();
+        typed = type(line, MS_PER_CHAR, onWord);
+        end();
+      }
+    });
   }
-  return speakBrowser(line, opts);
 }
 
-function speakBrowser(text, { onWord, onEnd } = {}) {
-  if (!window.speechSynthesis) { onEnd?.(); return false; }
-  try {
-    speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(String(text));
-    u.rate = 0.9; u.pitch = 0.82;
-    if (preferredVoice) u.voice = preferredVoice;
-    u.onboundary = (e) => {
-      if (e.name && e.name !== 'word') return;
-      const rest = String(text).slice(e.charIndex);
-      onWord?.(rest.split(/\s/)[0] || '');
-    };
-    u.onend = u.onerror = () => onEnd?.();
-    speechSynthesis.speak(u);
-    return true;
-  } catch (_) { return false; }
-}
-
-export function silence() {
-  stopAudio();
+function stopPlayback() {
+  const stop = stopCurrent;
+  stopCurrent = null;
+  stop?.();
   try { window.speechSynthesis?.cancel(); } catch (_) {}
+}
+
+/** Stop speaking now; any narration in progress ends. */
+export function silence() {
+  narration += 1;
+  stopPlayback();
 }
