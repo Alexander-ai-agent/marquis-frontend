@@ -122,13 +122,15 @@ export async function narrate(text, { type, onStart, onLevel, onWord } = {}) {
 /** Returns the index of the first line it could not speak (lines.length when all spoken). */
 async function narrateFish(id, lines, { type, onStart, onLevel }) {
   const clips = [];
+  const silent = (i) => !spoken(lines[i]).trim();
   const fetchClip = (i) => {
-    if (i >= lines.length) return null;
+    if (i >= lines.length || silent(i)) return null;
     clips[i] = clips[i] || synthesizeSpeech(state.token, spoken(lines[i])).catch(() => null);
     return clips[i];
   };
   for (let i = 0; i < PREFETCH; i += 1) fetchClip(i);
   for (let i = 0; i < lines.length; i += 1) {
+    if (silent(i)) { if (i === 0) onStart?.(); await type(lines[i], MS_PER_CHAR); continue; }
     const blob = await withTimeout(fetchClip(i), i === 0 ? FIRST_CLIP_WAIT_MS : NEXT_CLIP_WAIT_MS);
     if (id !== narration) return lines.length;
     if (!blob) { fishOffUntil = Date.now() + FISH_COOLDOWN_MS; return i; }
