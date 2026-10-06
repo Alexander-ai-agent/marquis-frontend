@@ -14,10 +14,13 @@ import { DEMO_MODE, synthesizeSpeech } from './api.js';
 
 export const MS_PER_CHAR = 38;
 const BROWSER_MS_PER_CHAR = 62;   // the browser voice at rate 0.9
-const FIRST_CLIP_WAIT_MS = 7000;  // after this, fall back rather than keep him silent
-const NEXT_CLIP_WAIT_MS = 20000;
+// Fish takes ~4s per short sentence; longer ones take longer. Waits are
+// generous, and a clip that still fails is typed silently: a signed-in
+// founder only ever hears Alfred's real voice, never the browser's.
+const FIRST_CLIP_WAIT_MS = 15000;
+const NEXT_CLIP_WAIT_MS = 30000;
 const PREFETCH = 3;
-const FISH_COOLDOWN_MS = 60000;   // after a failure, don't make every reply wait on it
+const FIRST_CLIP_CHARS = 110;     // a short opening clip comes back sooner
 
 let activated = false;
 let audioCtx = null;
@@ -120,10 +123,19 @@ const spoken = (line) => line.replace(PARA, '').replace(/\s?\[\d+\]/g, '').repla
 
 let narration = 0;          // bumps on every new narration or silence()
 let stopCurrent = null;     // resolves the clip or utterance in progress
-let fishOffUntil = 0;
 
 const canSpeak = () => state.voiceOn && activated;
-const fishReady = () => !DEMO_MODE && Boolean(state.token) && Date.now() > fishOffUntil;
+const fishReady = () => !DEMO_MODE && Boolean(state.token);
+
+/** Cut a long opening line at a natural break so the first clip is quick. */
+function quickStart(lines) {
+  const [first, ...rest] = lines;
+  if (!first || first.length <= FIRST_CLIP_CHARS) return lines;
+  const breaks = [...first.matchAll(/[,;:—–] /g)].map((m) => m.index + 1).filter((i) => i >= 30 && i <= FIRST_CLIP_CHARS);
+  let cut = breaks.sort((a, b) => Math.abs(a - 70) - Math.abs(b - 70))[0];
+  if (!cut) cut = first.lastIndexOf(' ', 85);
+  return cut > 20 ? [first.slice(0, cut).trim(), first.slice(cut).trim(), ...rest] : lines;
+}
 const withTimeout = (p, ms) => Promise.race([p, new Promise((r) => setTimeout(() => r(null), ms))]);
 
 /**
@@ -137,49 +149,48 @@ export async function narrate(text, { type, onStart, onLevel, onWord } = {}) {
   stopPlayback();
   const lines = splitLines(text);
   if (!lines.length) { onStart?.(); return; }
-  let from = 0;
-  if (canSpeak() && fishReady()) {
-    from = await narrateFish(id, lines, { type, onStart, onLevel });
-    if (from >= lines.length || id !== narration) return;
-  }
-  const rest = lines.slice(from);
-  if (canSpeak() && window.speechSynthesis) await narrateBrowser(id, rest, { type, onStart, onWord, first: from === 0 });
-  else {
-    if (from === 0) onStart?.();
-    for (const line of rest) {
-      if (id !== narration) return;
-      await type(line, MS_PER_CHAR, onWord);
-    }
+  // Signed in: Alfred's own (Fish) voice only. The browser's voice is for
+  // demo mode and signed-out pages, never a stand-in mid-conversation.
+  if (canSpeak() && fishReady()) { await narrateFish(id, quickStart(lines), { type, onStart, onLevel, onWord }); return; }
+  if (canSpeak() && window.speechSynthesis) { await narrateBrowser(id, lines, { type, onStart, onWord, first: true }); return; }
+  onStart?.();
+  for (const line of lines) {
+    if (id !== narration) return;
+    await type(line, MS_PER_CHAR, onWord);
   }
 }
 
-/** Returns the index of the first line it could not speak (lines.length when all spoken). */
-async function narrateFish(id, lines, { type, onStart, onLevel }) {
+/** Speak each line in Alfred's Fish voice. A line whose clip fails or never
+ * arrives is typed silently (the orb still moves with its words); the next
+ * line tries again. */
+async function narrateFish(id, lines, { type, onStart, onLevel, onWord }) {
   const clips = [];
   const silent = (i) => !spoken(lines[i]).trim();
   const fetchClip = (i) => {
     if (i >= lines.length || silent(i)) return null;
-    clips[i] = clips[i] || synthesizeSpeech(state.token, spoken(lines[i])).catch(() => null);
+    clips[i] = clips[i] || synthesizeSpeech(state.token, spoken(lines[i])).catch((e) => {
+      console.warn('[voice] clip failed:', e?.message || e);
+      return null;
+    });
     return clips[i];
   };
+  let started = false;
+  const begin = () => { if (!started) { started = true; onStart?.(); } };
   for (let i = 0; i < PREFETCH; i += 1) fetchClip(i);
   for (let i = 0; i < lines.length; i += 1) {
-    if (silent(i)) { if (i === 0) onStart?.(); await type(lines[i], MS_PER_CHAR); continue; }
-    const blob = await withTimeout(fetchClip(i), i === 0 ? FIRST_CLIP_WAIT_MS : NEXT_CLIP_WAIT_MS);
-    if (id !== narration) return lines.length;
-    if (!blob) { fishOffUntil = Date.now() + FISH_COOLDOWN_MS; return i; }
+    if (id !== narration) return;
     fetchClip(i + PREFETCH);
+    const blob = silent(i) ? null : await withTimeout(fetchClip(i), i === 0 ? FIRST_CLIP_WAIT_MS : NEXT_CLIP_WAIT_MS);
+    if (id !== narration) return;
+    if (!blob) { begin(); await type(lines[i], MS_PER_CHAR, onWord); continue; }
     const clip = await loadClip(blob, lines[i]);
-    if (id !== narration) { URL.revokeObjectURL(clip.el.src); return lines.length; }
-    if (i === 0) onStart?.();
+    if (id !== narration) { URL.revokeObjectURL(clip.el.src); return; }
+    begin();
     // Match the clip: its length, less the beats the reveal adds itself.
     const line = lines[i].replace(PARA, '');
     const msPerChar = Math.max(18, Math.min(95, (clip.duration * 1000 - totalPause(line)) / Math.max(line.length, 1)));
-    const played = playClip(clip, onLevel);
-    await Promise.all([played, type(lines[i], msPerChar)]);
-    if (!(await played) && id === narration) return i + 1; // playback refused: carry on in the browser voice
+    await Promise.all([playClip(clip, onLevel), type(lines[i], msPerChar)]);
   }
-  return lines.length;
 }
 
 function loadClip(blob, line) {
