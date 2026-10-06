@@ -151,8 +151,11 @@ export async function narrate(text, { type, onStart, onLevel, onWord } = {}) {
   if (!lines.length) { onStart?.(); return; }
   // Signed in: Alfred's own (Fish) voice only. The browser's voice is for
   // demo mode and signed-out pages, never a stand-in mid-conversation.
-  if (canSpeak() && fishReady()) { await narrateFish(id, quickStart(lines), { type, onStart, onLevel, onWord }); return; }
-  if (canSpeak() && window.speechSynthesis) { await narrateBrowser(id, lines, { type, onStart, onWord, first: true }); return; }
+  const engine = !canSpeak() ? (state.voiceOn ? 'none (waiting for a click or keypress)' : 'none (voice off)')
+    : fishReady() ? 'fish' : window.speechSynthesis ? 'browser (demo or signed out)' : 'none';
+  console.info(`[voice] engine: ${engine}`);
+  if (engine === 'fish') { await narrateFish(id, quickStart(lines), { type, onStart, onLevel, onWord }); return; }
+  if (engine.startsWith('browser')) { await narrateBrowser(id, lines, { type, onStart, onWord, first: true }); return; }
   onStart?.();
   for (const line of lines) {
     if (id !== narration) return;
