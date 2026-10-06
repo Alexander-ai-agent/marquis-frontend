@@ -9,6 +9,7 @@ const KEYS = {
   onboarded: 'marquis_onboarded',
   profile: 'marquis_profile',
   mode: 'marquis_mode',
+  reply: 'marquis_reply_style',
 };
 
 function readJson(key) {
@@ -25,7 +26,15 @@ export const state = {
   // Communication mode (MARQUIS_product.md): 'voice' = speak in, voice out
   // (default); 'text' = type in, voice out.
   mode: localStorage.getItem(KEYS.mode) === 'text' ? 'text' : 'voice',
+  // How Alfred answers: 'brief' (the answer, little else) or 'detailed'
+  // (short paragraphs with the reasoning). Chosen at onboarding.
+  replyStyle: localStorage.getItem(KEYS.reply) === 'detailed' ? 'detailed' : 'brief',
 };
+
+export function setReplyStyle(style) {
+  state.replyStyle = style === 'detailed' ? 'detailed' : 'brief';
+  localStorage.setItem(KEYS.reply, state.replyStyle);
+}
 
 export function setSession(token, user) {
   state.token = token;

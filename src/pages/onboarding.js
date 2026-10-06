@@ -8,7 +8,7 @@
 
 import { qs, qsa, escapeHtml } from '../lib/dom.js';
 import { reveal } from '../lib/motion.js';
-import { setOnboarded, state } from '../lib/state.js';
+import { setOnboarded, setReplyStyle, state } from '../lib/state.js';
 import { fetchClarifyingQuestions, fetchPathway, DEMO_MODE } from '../lib/api.js';
 
 // Used in DEMO_MODE, and as a fallback if the butler can't be reached for
@@ -105,8 +105,15 @@ function wire() {
     await loadPathway();
   });
 
+  // Step 5: how Alfred should answer (brief by default).
+  qsa('#obStyleList .ob-option').forEach((b) => b.addEventListener('click', () => {
+    selectIn(qs('#obStyleList'), b);
+    ob.replyStyle = b.dataset.val;
+  }));
+
   qs('#obEnter').addEventListener('click', () => {
     const p = { type: ob.typeLabel, stage: ob.stage, desc: ob.desc, answers: ob.answers, created: Date.now() };
+    setReplyStyle(ob.replyStyle || 'brief');
     setOnboarded(p);
     qs('#page-onboarding').classList.remove('active');
     onFinish(p);
@@ -153,6 +160,7 @@ async function loadPathway() {
   const enter = qs('#obEnter');
   box.innerHTML = '';
   enter.hidden = true;
+  qs('#obStyle').hidden = true;
   let pathway;
   if (DEMO_MODE) {
     pathway = demoPathway();
@@ -178,6 +186,7 @@ async function loadPathway() {
       ${p.success ? `<p class="ob-success"><b>What success looks like:</b> ${escapeHtml(p.success)}</p>` : ''}
     </div>
     <div class="card ob-week"><div class="label" style="margin-bottom:8px">This week</div>${escapeHtml(pathway.this_week)}</div>`;
+  qs('#obStyle').hidden = false;
   enter.hidden = false;
   reveal(box.children, { y: 8, duration: 0.2, stagger: 0.08 });
 }

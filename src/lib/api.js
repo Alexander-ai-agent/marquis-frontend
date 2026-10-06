@@ -113,7 +113,7 @@ async function realConversation(token, message, conversationHistory) {
   const res = await fetchWithTimeout(`${API_BASE}/conversation`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ message, conversation_history: conversationHistory }),
+    body: JSON.stringify({ message, conversation_history: conversationHistory, reply_style: state.replyStyle }),
   }, CONVERSATION_TIMEOUT_MS);
   const data = await res.json().catch(() => ({}));
   if (!res.ok || !data.butler_response) throw new Error(data.error || 'No reply');
@@ -125,6 +125,7 @@ async function realConversation(token, message, conversationHistory) {
     workspace: data.workspace || null,
     sources: Array.isArray(data.sources) ? data.sources : [],
     design: data.design && typeof data.design.brief === 'string' ? data.design : null,
+    build: data.build && typeof data.build.brief === 'string' ? data.build : null,
   };
 }
 
@@ -263,6 +264,21 @@ export async function designCanvas(token, brief) {
   }, DESIGN_TIMEOUT_MS);
   const data = await res.json().catch(() => ({}));
   if (!res.ok || !data.visualization) throw new Error(data.error || 'The designer is unavailable right now.');
+  return { text: data.butler_response || '', visualization: data.visualization };
+}
+
+const SITE_TIMEOUT_MS = 175000; // a whole page takes the builder a while
+
+/** The builder makes a working page from a brief (backend /canvas/site). */
+export async function buildSite(token, brief) {
+  if (DEMO_MODE) throw new Error('The builder works with the live service only.');
+  const res = await fetchWithTimeout(`${API_BASE}/canvas/site`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ brief }),
+  }, SITE_TIMEOUT_MS);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.visualization?.html) throw new Error(data.error || 'The builder is unavailable right now.');
   return { text: data.butler_response || '', visualization: data.visualization };
 }
 

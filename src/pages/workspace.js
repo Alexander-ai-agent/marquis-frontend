@@ -21,6 +21,7 @@ import { state } from '../lib/state.js';
 import { createSheet, colName, formatCell } from '../lib/sheet.js';
 import { renderDesign, renderDrafting, failDrafting } from './canvas-design.js';
 import { renderSources, citeSource } from './canvas-sources.js';
+import { renderSite, renderBars } from './canvas-pages.js';
 
 /** Route a /conversation `visualization` block to the right workspace.
  * `sources` (web pages Alfred read) ride along under the block. */
@@ -29,6 +30,8 @@ export function openViz(viz, { sources } = {}) {
   if (viz.type === 'sheet') open('sheet', viz, opts);
   else if (viz.type === 'drawing') open('drawing', viz, opts);
   else if (viz.type === 'design') open('design', viz, opts);
+  else if (viz.type === 'site') open('site', viz, opts);
+  else if (viz.type === 'bars') open('bars', viz, opts);
   else if (viz.type === 'blueprint') open('wireframe', { subject: viz.title, regions: viz.regions }, opts);
   else if (viz.type === 'images') open('reel', { query: viz.query, title: viz.title }, opts);
   else open('chart', viz, opts);
@@ -39,8 +42,10 @@ export function openSources(sources) {
   open('sources', { title: 'What I read on your behalf', sources });
 }
 
-/** The designer is at work on `brief`; show the drafting table. */
-export function openDrafting(brief) { open('drafting', { brief, title: 'At the drafting table' }); }
+/** The designer (or builder) is at work on `brief`; show the drafting table. */
+export function openDrafting(brief, { building = false } = {}) {
+  open('drafting', { brief, building, title: building ? 'At the workbench' : 'At the drafting table' });
+}
 export function isDrafting(brief) { return current?.kind === 'drafting' && current.data.brief === brief; }
 export function draftingFailed(message) { if (current?.kind === 'drafting') failDrafting(root.querySelector('#wsPlane'), message); }
 
@@ -67,7 +72,9 @@ export function label() {
   if (current.kind === 'sheet') return current.edits ? `SHEET · ${current.edits} EDIT${current.edits === 1 ? '' : 'S'}` : 'SHEET';
   if (current.kind === 'drawing') return 'DRAWING';
   if (current.kind === 'design') return `DESIGN · ${current.data.variants.length} CONCEPT${current.data.variants.length === 1 ? '' : 'S'}`;
-  if (current.kind === 'drafting') return 'DESIGN · DRAFTING';
+  if (current.kind === 'drafting') return current.data.building ? 'PAGE · BUILDING' : 'DESIGN · DRAFTING';
+  if (current.kind === 'site') return 'PAGE · LIVE';
+  if (current.kind === 'bars') return `COMPARISON · ${current.data.items.length}`;
   if (current.kind === 'sources') return `READING · ${current.data.sources.length} SOURCES`;
   if (current.kind === 'pen') return 'YOUR SKETCH';
   return 'CANVAS';
@@ -103,6 +110,8 @@ export function open(k, data, { sources } = {}) {
   else if (k === 'pen') renderPen(plane, data);
   else if (k === 'design') renderDesign(plane, data);
   else if (k === 'drafting') renderDrafting(plane, data);
+  else if (k === 'site') renderSite(plane, data);
+  else if (k === 'bars') renderBars(plane, data);
   else if (k === 'sources') renderSources(plane, data.sources);
   if (k !== 'sources' && sources?.length) renderSources(root, sources, { strip: true });
   if (!skipMovement() && !wasOpen) { try { gsap.fromTo(root, { opacity: 0 }, { opacity: 1, duration: 0.9, ease: EASE.out }); } catch (_) {} }

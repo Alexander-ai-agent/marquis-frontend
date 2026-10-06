@@ -126,6 +126,13 @@
             </span>
           </div>
           <div class="cfg-row">
+            <span class="label">Alfred answers</span>
+            <span class="cfg-val cfg-choices" role="radiogroup" aria-label="How Alfred answers">
+              <button type="button" class="tog" role="radio" data-reply-option="brief" aria-checked="true">Briefly</button>
+              <button type="button" class="tog" role="radio" data-reply-option="detailed" aria-checked="false">In detail</button>
+            </span>
+          </div>
+          <div class="cfg-row">
             <span class="label">Alfred speaks aloud</span>
             <span class="cfg-val"><button type="button" class="tog" id="voiceToggle" role="switch" aria-checked="true">Aloud</button></span>
           </div>
@@ -203,6 +210,13 @@
         <h1 class="ob-title">Here is where to start.</h1>
         <div class="ob-thinking label" id="obThinking5" hidden>Drawing up phase one.</div>
         <div id="obReveal"></div>
+        <div class="ob-style" id="obStyle" hidden>
+          <div class="label">One last thing: how should I answer you?</div>
+          <div class="ob-list" id="obStyleList" role="radiogroup" aria-label="How Alfred answers">
+            <button type="button" class="ob-option sel" role="radio" aria-checked="true" data-val="brief">Briefly <span>the answer, and little else</span></button>
+            <button type="button" class="ob-option" role="radio" aria-checked="false" data-val="detailed">In detail <span>the reasoning too, in short paragraphs</span></button>
+          </div>
+        </div>
         <div class="ob-nav"><span></span><span class="label">05 / 05</span><button type="button" class="act gold-act btn" id="obEnter" hidden>Enter ›</button></div>
       </div>
     </div></div>

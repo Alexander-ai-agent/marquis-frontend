@@ -10,10 +10,10 @@
 
 import { qs, escapeHtml } from '../lib/dom.js';
 import { skipMovement } from '../lib/motion.js';
-import { sendConversationMessage, designCanvas } from '../lib/api.js';
+import { sendConversationMessage, designCanvas, buildSite } from '../lib/api.js';
 import { state, setMode } from '../lib/state.js';
 import { setFieldState, fieldDeliver } from '../lib/field.js';
-import { typewrite, narrate, silence } from '../lib/voice.js';
+import { typewrite, narrate, silence, PARA } from '../lib/voice.js';
 import { createOrb } from '../lib/orb.js';
 import { wakeShell } from '../lib/router.js';
 import * as workspace from './workspace.js';
@@ -71,7 +71,9 @@ function decorate(span, line, sources) {
 
 function say(text, { sources } = {}) {
   return narrate(text, {
-    type: (line, msPerChar, onWord) => {
+    type: (raw, msPerChar, onWord) => {
+      if (raw.startsWith(PARA)) el.subtitle.insertAdjacentHTML('beforeend', '<span class="para-gap" aria-hidden="true"></span>');
+      const line = raw.replace(PARA, '');
       const span = document.createElement('span');
       span.className = 'line';
       el.subtitle.appendChild(span);
@@ -162,6 +164,7 @@ async function send(text) {
   const sources = reply.sources || [];
   if (reply.workspace) workspace.open(reply.workspace.type, reply.workspace);
   else if (reply.design?.brief) draft(reply.design.brief);
+  else if (reply.build?.brief) draft(reply.build.brief, { building: true });
   else if (reply.visualization) workspace.openViz(reply.visualization, { sources });
   else if (sources.length) workspace.openSources(sources);
   else if (!local && workspace.kind() === 'chart') workspace.close();
@@ -171,11 +174,12 @@ async function send(text) {
   enqueue(reply.text, { sources });
 }
 
-/** Hand a brief to the designer; the drafting table shows until it lands. */
-async function draft(brief) {
-  workspace.openDrafting(brief);
+/** Hand a brief to the designer (or, building, to the builder); the
+ * drafting table shows until the work lands. */
+async function draft(brief, { building = false } = {}) {
+  workspace.openDrafting(brief, { building });
   try {
-    const result = await designCanvas(state.token, brief);
+    const result = await (building ? buildSite : designCanvas)(state.token, brief);
     if (!workspace.isDrafting(brief)) return; // the founder has moved on
     workspace.openViz(result.visualization);
     setContext(workspace.label());

@@ -170,7 +170,7 @@ export function renderDrafting(plane, data) {
   ];
   plane.innerHTML = `<div class="drafting">
     <svg class="drafting-art" viewBox="0 0 100 100" aria-hidden="true">${lines.map((l, i) => l.replace(/^<(\w+)/, `<$1 pathLength="1" style="--i:${i}"`)).join('')}</svg>
-    <p class="label drafting-label">Drafting<span class="dots" aria-hidden="true"><i></i><i></i><i></i></span></p>
+    <p class="label drafting-label">${data.building ? 'Building' : 'Drafting'}<span class="dots" aria-hidden="true"><i></i><i></i><i></i></span></p>
     <p class="drafting-brief">${escapeHtml(data.brief || '')}</p></div>`;
 }
 

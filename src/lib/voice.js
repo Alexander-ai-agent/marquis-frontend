@@ -57,9 +57,18 @@ export function typewrite(el, text, { onWord, onChar, msPerChar = MS_PER_CHAR } 
 const MIN_LINE = 40;
 const MAX_LINE = 240;
 
+/** Marks the first line of a new paragraph (stripped before display/speech). */
+export const PARA = ' ';
+
 /** Split a reply into speakable lines: sentences, short ones merged, very
- * long ones broken at a comma or dash near the middle. */
+ * long ones broken at a comma or dash near the middle. Paragraphs (blank
+ * lines) are kept: the first line of each later paragraph starts with PARA. */
 export function splitLines(text) {
+  return String(text || '').split(/\n\s*\n/).map(paragraphLines).filter((ls) => ls.length)
+    .flatMap((ls, p) => (p ? [PARA + ls[0], ...ls.slice(1)] : ls));
+}
+
+function paragraphLines(text) {
   const clean = String(text || '').replace(/\*\*|__/g, '').replace(/\s+/g, ' ').trim();
   if (!clean) return [];
   // A citation after the full stop ("…a year. [1] Runna…") stays with its sentence.
@@ -80,7 +89,7 @@ export function splitLines(text) {
 }
 
 /** What is said aloud: citations and stray markup are for the eye only. */
-const spoken = (line) => line.replace(/\s?\[\d+\]/g, '').replace(/[*_#`]/g, '');
+const spoken = (line) => line.replace(PARA, '').replace(/\s?\[\d+\]/g, '').replace(/[*_#`]/g, '');
 
 /* ---------------- narration ---------------- */
 

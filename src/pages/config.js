@@ -2,7 +2,7 @@
 // element: CONFIRM CHANGES. Toggles stage changes; confirming applies them.
 
 import { qs, qsa } from '../lib/dom.js';
-import { state, setVoice, setMode, resetOnboarding, clearSession } from '../lib/state.js';
+import { state, setVoice, setMode, setReplyStyle, resetOnboarding, clearSession } from '../lib/state.js';
 
 const canSpeak = Boolean(window.SpeechRecognition || window.webkitSpeechRecognition);
 let staged = {};
@@ -17,6 +17,8 @@ function sync() {
     if (b.dataset.modeOption === 'voice' && !canSpeak) { b.disabled = true; b.setAttribute('aria-disabled', 'true'); }
   });
   paintToggle(qs('#voiceToggle'), voice);
+  const reply = staged.reply ?? state.replyStyle;
+  qsa('#page-config [data-reply-option]').forEach((b) => paintToggle(b, b.dataset.replyOption === reply));
   const pending = Object.keys(staged).length > 0;
   qs('#cfgConfirm').disabled = !pending;
 }
@@ -37,6 +39,11 @@ export function initConfig() {
     if (v === state.mode) delete staged.mode; else staged.mode = v;
     sync();
   }));
+  qsa('#page-config [data-reply-option]').forEach((b) => b.addEventListener('click', () => {
+    const v = b.dataset.replyOption;
+    if (v === state.replyStyle) delete staged.reply; else staged.reply = v;
+    sync();
+  }));
   qs('#voiceToggle').addEventListener('click', () => {
     const next = !(staged.voice ?? state.voiceOn);
     if (next === state.voiceOn) delete staged.voice; else staged.voice = next;
@@ -45,6 +52,7 @@ export function initConfig() {
   qs('#cfgConfirm').addEventListener('click', () => {
     if ('mode' in staged) setMode(staged.mode);
     if ('voice' in staged) setVoice(staged.voice);
+    if ('reply' in staged) setReplyStyle(staged.reply);
     staged = {};
     sync();
     qs('#cfgConfirmNote').textContent = 'Noted.';

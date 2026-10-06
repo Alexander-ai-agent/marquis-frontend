@@ -17,11 +17,35 @@ const RIBBONS = HUES.map((rgb, i) => ({
   rgb,
   tilt: i * 1.257,
   dir: i % 2 ? -1 : 1,
-  speed: 0.32 + i * 0.07,
-  freq: 1.1 + (i % 3) * 0.5,
-  phase: i * 2.1,
-  spread: 0.13 + 0.04 * (i % 2),
+  speed: 0.75 + i * 0.13,
+  seed: 17.3 * (i + 1),
+  spread: 0.12 + 0.05 * (i % 2),
 }));
+
+/* Smooth 2D gradient (Perlin) noise: organic motion that never repeats,
+   unlike sums of sine waves, which visibly loop and line up. */
+const PERM = (() => {
+  const p = Array.from({ length: 256 }, (_, i) => i);
+  let s = 1337;
+  for (let i = 255; i > 0; i -= 1) {
+    s = (s * 16807) % 2147483647;
+    const j = s % (i + 1);
+    [p[i], p[j]] = [p[j], p[i]];
+  }
+  return Uint8Array.from([...p, ...p]);
+})();
+const GRADS = [[1, 1], [-1, 1], [1, -1], [-1, -1], [1, 0], [-1, 0], [0, 1], [0, -1]];
+const fade = (t) => t * t * t * (t * (t * 6 - 15) + 10);
+function noise(x, y) {
+  const xi = Math.floor(x) & 255, yi = Math.floor(y) & 255;
+  const xf = x - Math.floor(x), yf = y - Math.floor(y);
+  const g = (ix, iy, dx, dy) => { const v = GRADS[PERM[ix + PERM[iy]] & 7]; return v[0] * dx + v[1] * dy; };
+  const u = fade(xf), v = fade(yf);
+  const a = g(xi, yi, xf, yf) + u * (g(xi + 1, yi, xf - 1, yf) - g(xi, yi, xf, yf));
+  const b = g(xi, yi + 1, xf, yf - 1) + u * (g(xi + 1, yi + 1, xf - 1, yf - 1) - g(xi, yi + 1, xf, yf - 1));
+  return a + v * (b - a); // roughly -1..1
+}
+const fbm = (x, y) => noise(x, y) * 0.68 + noise(x * 2.07 + 31.7, y * 1.93 + 4.1) * 0.32;
 const FILAMENTS = 7;
 const ENERGY = { idle: 0.28, thinking: 0.62, speaking: 0.5 };
 const SPIN = { idle: 0.16, thinking: 0.85, speaking: 0.3 };
@@ -53,15 +77,18 @@ export function createOrb(canvas) {
   function filament(r, R, f) {
     const mid = (FILAMENTS - 1) / 2;
     const off = (f - mid) / mid;
-    const amp = R * (0.34 + 0.3 * energy + 0.45 * level);
+    const tt = t * r.speed;
+    // each ribbon's reach swells and settles on its own, unpredictably
+    const reach = 0.65 + 0.7 * (0.5 + 0.5 * noise(tt * 0.18, r.seed + 3.3));
+    const amp = R * (0.55 + 0.35 * energy + 0.6 * level) * reach;
     const pts = [];
     for (let x = -R * 1.1; x <= R * 1.1 + 0.01; x += R / 26) {
       const u = x / R;
-      const envelope = 0.35 + 0.65 * Math.max(0, 1 - u * u * 0.6);
-      const crest = Math.sin(u * r.freq * Math.PI + t * r.speed * 2 * r.dir + r.phase);
-      const ripple = Math.sin(u * 3.1 - t * 1.5 * r.speed + f * 0.45) * (0.3 + 1.2 * level);
-      const fan = off * R * r.spread * (0.7 + 0.5 * Math.sin(u * 2.1 + t * 0.8 + f * 0.6));
-      pts.push([x, (crest * amp * 0.62 + ripple * R * 0.08) * envelope + fan]);
+      const envelope = 0.4 + 0.6 * Math.max(0, 1 - u * u * 0.55);
+      const crest = fbm(u * 0.85 + r.seed, tt * 0.22);
+      const ripple = noise(u * 2.6 + r.seed * 2, tt * 0.55 + f * 0.11) * (0.25 + 1.1 * level);
+      const fan = off * R * r.spread * (0.55 + 0.9 * (0.5 + 0.5 * noise(u * 1.4 + r.seed + f * 0.07, tt * 0.3)));
+      pts.push([x, (crest * amp + ripple * R * 0.09) * envelope + fan]);
     }
     return pts;
   }
@@ -118,7 +145,8 @@ export function createOrb(canvas) {
     RIBBONS.forEach((r) => {
       sctx.save();
       sctx.translate(cx, cy);
-      sctx.rotate(r.tilt + spin * r.dir * (0.6 + r.speed));
+      // the angle wanders too, so ribbons drift into and across each other
+      sctx.rotate(r.tilt + spin * r.dir * 0.35 + noise(t * 0.05 * r.speed, r.seed + 9.1) * 2.4);
       ribbon(r, R);
       sctx.restore();
     });
@@ -164,7 +192,8 @@ export function createOrb(canvas) {
     levelTarget *= 0.9; // word pulses decay; a live analyser keeps it topped up
     energy += (ENERGY[mode] - energy) * 0.04;
     spin += dt * SPIN[mode] * slow;
-    t += dt * slow;
+    // his voice quickens the current: the louder, the faster the silk moves
+    t += dt * slow * (1 + level * 2.2 + (mode === 'thinking' ? 0.8 : 0));
     draw();
     raf = requestAnimationFrame(frame);
   }
