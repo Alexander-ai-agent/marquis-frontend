@@ -26,9 +26,33 @@ let audioCtx = null;
   try { audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)(); } catch (_) { audioCtx = null; }
 }, { once: true, capture: true }));
 
-/** Reveal text into el at a constant rate. Calls onWord(word) as each word
- * completes and onChar() after each character. Resolves when done; a newer
- * call on the same el (or el._typeToken = null) cancels it. */
+// Beats in the reveal, so "Hm." and "...So." and "Wait —" read as pauses,
+// not just more characters: extra milliseconds after the character at i.
+const BEAT = { comma: 70, stop: 200, dash: 260, ellipsis: 420 };
+
+export function pauseAfter(text, i) {
+  const ch = text[i];
+  const next = text[i + 1];
+  if (ch === '…') return BEAT.ellipsis;
+  if (ch === '.' && text[i - 1] === '.' && next !== '.') return BEAT.ellipsis; // end of "..."
+  if (ch === '.' && next === '.') return 0;                                    // inside "..."
+  if (ch === '—' || ch === '–') return BEAT.dash;
+  if (/[.!?]/.test(ch) && (next === undefined || /\s/.test(next))) return BEAT.stop;
+  if (/[,;:]/.test(ch) && /\s/.test(next || '')) return BEAT.comma;
+  return 0;
+}
+
+/** Total beat time in a line (so a voiced line can keep its overall pace). */
+export function totalPause(text) {
+  let ms = 0;
+  for (let i = 0; i < text.length; i += 1) ms += pauseAfter(text, i);
+  return ms;
+}
+
+/** Reveal text into el at a steady rate, with beats at punctuation. Calls
+ * onWord(word) as each word completes and onChar() after each character.
+ * Resolves when done; a newer call on the same el (or el._typeToken = null)
+ * cancels it. */
 export function typewrite(el, text, { onWord, onChar, msPerChar = MS_PER_CHAR } = {}) {
   const token = Symbol('type');
   el._typeToken = token;
@@ -44,8 +68,9 @@ export function typewrite(el, text, { onWord, onChar, msPerChar = MS_PER_CHAR } 
       el.textContent += ch;
       onChar?.();
       if (/\s/.test(ch)) { if (word) onWord?.(word); word = ''; } else word += ch;
+      const beat = pauseAfter(text, i);
       i += 1;
-      if (i < text.length) setTimeout(tick, msPerChar);
+      if (i < text.length) setTimeout(tick, msPerChar + beat);
       else { if (word) onWord?.(word); resolve(); }
     };
     if (text.length) tick(); else resolve();
@@ -147,7 +172,9 @@ async function narrateFish(id, lines, { type, onStart, onLevel }) {
     const clip = await loadClip(blob, lines[i]);
     if (id !== narration) { URL.revokeObjectURL(clip.el.src); return lines.length; }
     if (i === 0) onStart?.();
-    const msPerChar = Math.max(22, Math.min(95, (clip.duration * 1000) / Math.max(lines[i].length, 1)));
+    // Match the clip: its length, less the beats the reveal adds itself.
+    const line = lines[i].replace(PARA, '');
+    const msPerChar = Math.max(18, Math.min(95, (clip.duration * 1000 - totalPause(line)) / Math.max(line.length, 1)));
     const played = playClip(clip, onLevel);
     await Promise.all([played, type(lines[i], msPerChar)]);
     if (!(await played) && id === narration) return i + 1; // playback refused: carry on in the browser voice
