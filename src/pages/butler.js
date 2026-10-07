@@ -248,6 +248,15 @@ export function initButler() {
   }
   document.addEventListener('marquis:mode', (e) => applyMode(e.detail));
   document.addEventListener('marquis:voice', (e) => { if (!e.detail) silence(); });
+  // Which voice is playing, always visible: Fish, the browser's (demo only), failed, or off.
+  document.addEventListener('marquis:voice-status', (e) => {
+    const { engine, detail, build } = e.detail || {};
+    const ind = qs('#voiceInd');
+    if (!ind) return;
+    ind.dataset.voiceState = engine;
+    ind.textContent = `Voice · ${engine === 'fish' ? 'Fish' : engine === 'browser' ? 'Browser' : engine === 'failed' ? 'Fish failed' : 'Off'}`;
+    ind.title = `${detail} (build ${build})`;
+  });
   document.addEventListener('marquis:remark', (e) => remark(e.detail || {}));
   document.addEventListener('marquis:workspace-closed', () => setContext());
 

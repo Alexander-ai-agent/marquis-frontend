@@ -291,7 +291,10 @@ export async function synthesizeSpeech(token, text) {
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     body: JSON.stringify({ text }),
   });
-  if (!res.ok) throw new Error('The voice is unavailable.');
+  if (!res.ok) {
+    const detail = await res.json().then((d) => d.error).catch(() => '');
+    throw new Error(`voice service answered ${res.status}${detail ? `: ${detail}` : ''}`);
+  }
   return res.blob();
 }
 

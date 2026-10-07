@@ -76,6 +76,10 @@ a.cite:hover, a.cite:focus-visible{ border-bottom-color:var(--gold); }
 .divide{ display:flex; align-items:center; gap:12px; margin-top:24px; width:100%; }
 .divide-rule{ flex:1; height:1px; background:var(--rule); }
 .divide .label{ white-space:nowrap; }
+/* Which voice is in use: Fish reads as plain ink; anything else is called out in gold. */
+.voice-ind{ color:var(--ink-3); cursor:help; }
+.voice-ind[data-voice-state="fish"]{ color:var(--ink-2); }
+.voice-ind[data-voice-state="browser"], .voice-ind[data-voice-state="failed"]{ color:var(--gold); }
 
 .intent-row{ position:relative; margin-top:12px; width:100%; }
 .intent{ text-align:center; padding-left:52px; padding-right:52px; }

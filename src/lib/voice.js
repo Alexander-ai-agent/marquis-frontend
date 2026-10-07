@@ -13,6 +13,14 @@ import { state } from './state.js';
 import { DEMO_MODE, synthesizeSpeech } from './api.js';
 
 export const MS_PER_CHAR = 38;
+// Shown next to the voice indicator and logged with every reply, so a stale
+// browser-cached copy of this file is obvious (it would show no build, or an old one).
+export const VOICE_BUILD = 'fish-2026-10-07';
+
+/** Tell the page which voice is in use: 'fish' | 'browser' | 'failed' | 'off'. */
+function announce(engine, detail) {
+  document.dispatchEvent(new CustomEvent('marquis:voice-status', { detail: { engine, detail, build: VOICE_BUILD } }));
+}
 const BROWSER_MS_PER_CHAR = 62;   // the browser voice at rate 0.9
 // Fish takes ~4s per short sentence; longer ones take longer. Waits are
 // generous, and a clip that still fails is typed silently: a signed-in
@@ -153,7 +161,10 @@ export async function narrate(text, { type, onStart, onLevel, onWord } = {}) {
   // demo mode and signed-out pages, never a stand-in mid-conversation.
   const engine = !canSpeak() ? (state.voiceOn ? 'none (waiting for a click or keypress)' : 'none (voice off)')
     : fishReady() ? 'fish' : window.speechSynthesis ? 'browser (demo or signed out)' : 'none';
-  console.info(`[voice] engine: ${engine}`);
+  console.info(`[voice ${VOICE_BUILD}] engine: ${engine}`);
+  if (engine === 'fish') announce('fish', 'Fish Audio');
+  else if (engine.startsWith('browser')) announce('browser', 'Browser voice (demo or signed out)');
+  else announce('off', state.voiceOn ? 'Silent until you click or type' : 'Voice off');
   if (engine === 'fish') { await narrateFish(id, quickStart(lines), { type, onStart, onLevel, onWord }); return; }
   if (engine.startsWith('browser')) { await narrateBrowser(id, lines, { type, onStart, onWord, first: true }); return; }
   onStart?.();
@@ -171,8 +182,13 @@ async function narrateFish(id, lines, { type, onStart, onLevel, onWord }) {
   const silent = (i) => !spoken(lines[i]).trim();
   const fetchClip = (i) => {
     if (i >= lines.length || silent(i)) return null;
-    clips[i] = clips[i] || synthesizeSpeech(state.token, spoken(lines[i])).catch((e) => {
-      console.warn('[voice] clip failed:', e?.message || e);
+    clips[i] = clips[i] || synthesizeSpeech(state.token, spoken(lines[i])).then((blob) => {
+      if (blob) announce('fish', 'Fish Audio');
+      return blob;
+    }).catch((e) => {
+      // Never a silent swap to another voice: say so, on screen and in the console.
+      console.error('[voice] Fish Audio request failed:', e?.message || e);
+      announce('failed', `Fish Audio failed: ${e?.message || 'no reply'}. Text only`);
       return null;
     });
     return clips[i];
@@ -185,7 +201,10 @@ async function narrateFish(id, lines, { type, onStart, onLevel, onWord }) {
     fetchClip(i + PREFETCH);
     const blob = silent(i) ? null : await withTimeout(fetchClip(i), i === 0 ? FIRST_CLIP_WAIT_MS : NEXT_CLIP_WAIT_MS);
     if (id !== narration) return;
-    if (!blob) { begin(); await type(lines[i], MS_PER_CHAR, onWord); continue; }
+    if (!blob) {
+      if (!silent(i) && !document.querySelector('[data-voice-state="failed"]')) announce('failed', 'Fish Audio did not answer in time. Text only');
+      begin(); await type(lines[i], MS_PER_CHAR, onWord); continue;
+    }
     const clip = await loadClip(blob, lines[i]);
     if (id !== narration) { URL.revokeObjectURL(clip.el.src); return; }
     begin();
