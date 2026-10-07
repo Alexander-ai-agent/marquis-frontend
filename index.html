@@ -141,6 +141,7 @@
           <div class="cfg-row"><span class="label">Building</span><span class="cfg-val" id="cfgType">—</span></div>
           <div class="cfg-row"><span class="label">Stage</span><span class="cfg-val" id="cfgStage">—</span></div>
         </div>
+        <div class="cfg-group cfg-agents" id="cfgAgents"></div>
         <div class="cfg-group">
           <div class="cfg-row">
             <span class="label">Begin again</span>
@@ -216,6 +217,11 @@
             <button type="button" class="ob-option sel" role="radio" aria-checked="true" data-val="brief">Briefly <span>the answer, and little else</span></button>
             <button type="button" class="ob-option" role="radio" aria-checked="false" data-val="detailed">In detail <span>the reasoning too, in short paragraphs</span></button>
           </div>
+        </div>
+        <div class="ob-style ob-specialists" id="obSpecialists" hidden>
+          <div class="label">Specialists, if you want them</div>
+          <p class="ob-spec-note">The four core agents always run. These do one job each; pick any, or none. You'll tell them what to watch in Config.</p>
+          <div class="ob-list" id="obSpecList" role="group" aria-label="Specialist agents"></div>
         </div>
         <div class="ob-nav"><span></span><span class="label">05 / 05</span><button type="button" class="act gold-act btn" id="obEnter" hidden>Enter ›</button></div>
       </div>

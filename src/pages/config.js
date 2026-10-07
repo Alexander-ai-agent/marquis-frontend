@@ -3,6 +3,7 @@
 
 import { qs, qsa } from '../lib/dom.js';
 import { state, setVoice, setMode, setReplyStyle, resetOnboarding, clearSession } from '../lib/state.js';
+import { renderConfigAgents } from './config-agents.js';
 
 const canSpeak = Boolean(window.SpeechRecognition || window.webkitSpeechRecognition);
 let staged = {};
@@ -31,6 +32,7 @@ export function renderConfig() {
   staged = {};
   qs('#cfgConfirmNote').textContent = '';
   sync();
+  renderConfigAgents();
 }
 
 export function initConfig() {

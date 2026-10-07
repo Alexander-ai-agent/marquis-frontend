@@ -20,6 +20,7 @@
 .ob-option span{ color:var(--ink-3); font-size:var(--fs-small); }
 .ob-style{ margin-top:34px; }
 .ob-style .ob-list{ margin-top:12px; }
+.ob-spec-note{ margin-top:8px; font-size:var(--fs-small); line-height:1.6; color:var(--ink-3); max-width:52ch; }
 .ob-line-input{ margin-top:16px; font-size:14px; }
 
 .ob-textarea{ width:100%; resize:vertical; min-height:120px; font-size:14px; line-height:1.7; color:var(--ink); padding:10px 0; border-bottom:1px solid rgba(255,255,255,0.15); }

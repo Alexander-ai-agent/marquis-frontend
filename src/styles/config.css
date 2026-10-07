@@ -18,3 +18,23 @@
 
 .cfg-confirm{ border-top:1px solid var(--rule); padding-top:22px; margin-top:8px; display:flex; align-items:baseline; gap:18px; }
 @media (max-width:640px){ .config{ padding:56px 0 100px 22px; } .cfg-row{ grid-template-columns:1fr; gap:4px; } }
+
+/* Specialists: ruled list, [×]/[·] toggles, settings open in place. */
+.ca-cats{ display:flex; flex-wrap:wrap; gap:6px 16px; padding:2px 0 10px; }
+.ca-cats .tog{ font-size:12px; }
+.ca-list{ border-top:1px solid var(--rule); }
+.ca-agent{ border-bottom:1px solid var(--rule); padding:12px 0; }
+.ca-head{ display:flex; align-items:baseline; gap:14px; }
+.ca-head .cfg-note{ text-transform:uppercase; }
+.ca-expand{ margin-left:auto; }
+.ca-purpose{ margin-top:4px; font-size:var(--fs-small); color:var(--ink-3); line-height:1.5; }
+.ca-body{ margin-top:12px; display:flex; flex-direction:column; gap:12px; }
+.ca-field{ display:flex; flex-direction:column; gap:4px; }
+.ca-field .line-field{ font-size:13px; padding:6px 0; }
+.ca-metric{ display:grid; grid-template-columns:2fr .8fr 1fr 1fr; gap:10px; }
+.ca-add-metric{ align-self:flex-start; }
+.ca-hours{ background:var(--black); color:var(--ink-2); border:none; border-bottom:1px solid var(--rule-strong); font:inherit; font-size:12px; }
+.ca-actions{ display:flex; flex-wrap:wrap; align-items:baseline; gap:16px; }
+.ca-entry{ display:flex; flex-wrap:wrap; align-items:baseline; gap:12px; padding-top:10px; border-top:1px solid var(--rule); }
+.ca-entry .line-field{ flex:1; min-width:120px; font-size:13px; padding:6px 0; }
+.ca-entry select{ background:var(--black); color:var(--ink-2); border:none; border-bottom:1px solid var(--rule-strong); font:inherit; font-size:12px; }

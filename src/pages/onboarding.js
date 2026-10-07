@@ -10,6 +10,26 @@ import { qs, qsa, escapeHtml } from '../lib/dom.js';
 import { reveal } from '../lib/motion.js';
 import { setOnboarded, setReplyStyle, state } from '../lib/state.js';
 import { fetchClarifyingQuestions, fetchPathway, DEMO_MODE } from '../lib/api.js';
+import { fetchCatalog, enableAgent } from '../lib/agents-api.js';
+
+/** Step 5: the category's specialists as optional toggles (skippable). */
+async function showSpecialists() {
+  const box = qs('#obSpecialists');
+  ob.specialists = [];
+  if (DEMO_MODE) return;
+  let cat;
+  try { cat = await fetchCatalog(); } catch (_) { return; }
+  const agents = cat.agents.filter((a) => a.category === cat.suggested_category);
+  if (!agents.length) return;
+  qs('#obSpecList').innerHTML = agents.map((a) => `<button type="button" class="ob-option" role="checkbox" aria-checked="false" data-key="${escapeHtml(a.key)}">${escapeHtml(a.name)} <span>${escapeHtml(a.purpose)}</span></button>`).join('');
+  qsa('#obSpecList .ob-option').forEach((b) => b.addEventListener('click', () => {
+    const on = b.getAttribute('aria-checked') !== 'true';
+    b.setAttribute('aria-checked', String(on));
+    b.classList.toggle('sel', on);
+    ob.specialists = qsa('#obSpecList .ob-option.sel').map((x) => x.dataset.key);
+  }));
+  box.hidden = false;
+}
 
 // Used in DEMO_MODE, and as a fallback if the butler can't be reached for
 // step 4 (questions only; the reveal is never faked in real mode).
@@ -114,6 +134,8 @@ function wire() {
   qs('#obEnter').addEventListener('click', () => {
     const p = { type: ob.typeLabel, stage: ob.stage, desc: ob.desc, answers: ob.answers, created: Date.now() };
     setReplyStyle(ob.replyStyle || 'brief');
+    // Chosen specialists are saved switched off until set up in Config.
+    (ob.specialists || []).forEach((key) => enableAgent(key, { enabled: false }).catch(() => {}));
     setOnboarded(p);
     qs('#page-onboarding').classList.remove('active');
     onFinish(p);
@@ -187,6 +209,7 @@ async function loadPathway() {
     </div>
     <div class="card ob-week"><div class="label" style="margin-bottom:8px">This week</div>${escapeHtml(pathway.this_week)}</div>`;
   qs('#obStyle').hidden = false;
+  showSpecialists();
   enter.hidden = false;
   reveal(box.children, { y: 8, duration: 0.2, stagger: 0.08 });
 }

@@ -6,6 +6,8 @@
 import { qs, escapeHtml } from '../lib/dom.js';
 import { loadAll } from '../lib/data.js';
 import { DEMO_MODE } from '../lib/api.js';
+import { fetchMyAgents } from '../lib/agents-api.js';
+import { specialistTiles, wireSpecialists } from './agents-specialists.js';
 
 const AGENTS = [
   { key: 'performance', name: 'Performance', reads: 'Activity · 14 days' },
@@ -33,8 +35,12 @@ function finding(key, data) {
 
 export async function renderAgents() {
   let data;
-  try { data = await loadAll(); } catch (_) { data = { ok: false, phases: [], signals: null }; }
-  const sig = JSON.stringify([data.signals, data.dashboard?.agent_insights]);
+  let specialists = [];
+  [data, specialists] = await Promise.all([
+    loadAll().catch(() => ({ ok: false, phases: [], signals: null })),
+    fetchMyAgents().then((r) => r.agents).catch(() => []),
+  ]);
+  const sig = JSON.stringify([data.signals, data.dashboard?.agent_insights, specialists]);
   if (sig === signature && handles.length) return;     // nothing changed: leave them still
   signature = sig;
   handles.splice(0).forEach((h) => { try { h.destroy(); } catch (_) {} });
@@ -48,7 +54,9 @@ export async function renderAgents() {
       <div class="agent-visual" id="agent-${a.key}"></div>
       <p class="agent-finding">${escapeHtml(finding(a.key, data))}</p>
     </section>`;
-  }).join('');
+  }).join('') + specialistTiles(specialists);
+  grid.dataset.count = String(AGENTS.length + specialists.length);
+  wireSpecialists(grid, () => { signature = null; renderAgents(); });
 
   const mount = () => {
     AGENTS.forEach((a) => {

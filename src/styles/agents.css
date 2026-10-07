@@ -1,13 +1,16 @@
-/* Agents (brief §8): four tiles divided by hairline rules, ledger-style.
-   No cards, no shadows; one gold accent per tile at most. */
+/* Agents (brief §8): the core four, then any specialists, divided by
+   hairline rules, ledger-style. No cards, no shadows; one gold accent per
+   tile at most (the FLAGGED state label). Two columns; the screen scrolls
+   when specialists are added (4 to 16 tiles). */
 .agents{
   position:absolute; inset:0 0 0 var(--strip);
-  display:grid; grid-template-columns:1fr 1fr; grid-template-rows:1fr 1fr;
-  padding:0 0 0 0;
+  display:grid; grid-template-columns:1fr 1fr; grid-auto-rows:minmax(50%, auto);
+  overflow-y:auto;
 }
-.agent{ display:flex; flex-direction:column; min-width:0; min-height:0; padding:44px 56px 40px; }
+.agent{ display:flex; flex-direction:column; min-width:0; min-height:0; padding:44px 56px 40px; border-bottom:1px solid var(--rule); }
 .agent:nth-child(odd){ border-right:1px solid var(--rule); }
-.agent:nth-child(-n+2){ border-bottom:1px solid var(--rule); }
+/* exactly the core four: they fill the screen, last row unruled as before */
+.agents[data-count="4"] .agent:nth-child(n+3){ border-bottom:none; }
 .agent-head{ display:flex; justify-content:space-between; align-items:baseline; gap:16px; }
 .agent-name{ font-size:var(--fs-title); line-height:1; color:var(--ink); font-weight:300; }
 .agent-state{ color:var(--ink-2); }
@@ -16,7 +19,23 @@
 .agent-visual{ position:relative; flex:1; min-height:90px; margin:22px 0 18px; }
 .agent-finding{ font-size:12px; line-height:1.6; color:var(--ink-2); max-width:56ch; }
 
+/* specialists: their characteristic output in place of a visual */
+.agent-spec{ min-height:300px; }
+.spec-body{ flex:1; margin:20px 0 14px; display:flex; flex-direction:column; gap:12px; min-height:0; overflow-y:auto; }
+.spec-empty{ font-size:12px; color:var(--ink-3); }
+.spec-items{ list-style:none; display:flex; flex-direction:column; border-top:1px solid var(--rule); }
+.spec-items li{ font-size:12px; line-height:1.55; color:var(--ink-2); padding:8px 0; border-bottom:1px solid var(--rule); }
+.spec-src{ color:var(--ink-3); text-decoration:none; border-bottom:1px solid transparent; transition:border-color var(--dur-hover) var(--ease); }
+.spec-src:hover{ border-bottom-color:var(--ink-3); }
+.spec-flags{ list-style:none; border-top:1px solid var(--rule); }
+.spec-flags li{ display:grid; grid-template-columns:1fr auto auto; gap:14px; align-items:baseline; font-size:12px; color:var(--ink); padding:8px 0; border-bottom:1px solid var(--rule); }
+.spec-note{ font-family:var(--serif); font-style:italic; font-size:14px; line-height:1.4; color:var(--ink-3); }
+.spec-drafts details{ border-top:1px solid var(--rule); padding:8px 0; }
+.spec-drafts summary{ font-size:12px; color:var(--ink); cursor:pointer; }
+.spec-draft{ white-space:pre-wrap; font-family:var(--mono); font-size:12px; line-height:1.6; color:var(--ink-2); margin:8px 0; }
+.spec-run{ align-self:flex-start; }
+
 @media (max-width:900px){
   .agents{ display:block; overflow-y:auto; padding-bottom:72px; }
-  .agent{ min-height:340px; border-right:none !important; border-bottom:1px solid var(--rule); padding:36px 22px 30px; }
+  .agent{ min-height:340px; border-right:none !important; border-bottom:1px solid var(--rule) !important; padding:36px 22px 30px; }
 }
