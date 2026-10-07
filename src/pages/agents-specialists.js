@@ -6,6 +6,11 @@ import { escapeHtml } from '../lib/dom.js';
 import { runAgent } from '../lib/agents-api.js';
 
 const esc = (v) => escapeHtml(String(v ?? ''));
+// "$9,200" but "4.8%": currency symbols lead, other units follow.
+const amount = (v, unit) => {
+  const n = Number(v).toLocaleString(undefined, { maximumFractionDigits: 2 });
+  return /^[$€£₹¥]$/.test(unit || '') ? `${unit}${n}` : `${n}${unit || ''}`;
+};
 
 function domain(url) {
   try { return new URL(url).hostname.replace(/^www\./, ''); } catch (_) { return ''; }
@@ -37,7 +42,7 @@ function body(a) {
     detail = `<ol class="spec-items">${out.items.slice(0, 4).map((i) => `<li>${esc(i.text)}${i.source_url && /^https?:\/\//.test(i.source_url)
       ? ` <a class="spec-src label" href="${esc(i.source_url)}" target="_blank" rel="noopener noreferrer">${esc(domain(i.source_url))}</a>` : ''}</li>`).join('')}</ol>`;
   } else if (arch === 'tracker' && out.flags?.length) {
-    detail = `<ul class="spec-flags">${out.flags.map((f) => `<li><span>${esc(f.metric)}</span><span>${esc(f.value)}${esc(f.unit)} · ${esc(f.limit_kind)} ${esc(f.limit)}${esc(f.unit)}</span><span class="label">${f.level === 'breach' ? 'BREACH' : 'NEAR'}</span></li>`).join('')}</ul>`;
+    detail = `<ul class="spec-flags">${out.flags.map((f) => `<li><span>${esc(f.metric)}</span><span>${esc(amount(f.value, f.unit))} · ${esc(f.limit_kind)} ${esc(amount(f.limit, f.unit))}</span><span class="label">${f.level === 'breach' ? 'BREACH' : 'NEAR'}</span></li>`).join('')}</ul>`;
   } else if (arch === 'reviewer' && out.items?.length) {
     detail = `<ul class="spec-items">${out.items.slice(0, 4).map((i) => `<li>${esc(i.text)}</li>`).join('')}</ul>`;
   } else if (arch === 'drafter' && out.drafts?.length) {
