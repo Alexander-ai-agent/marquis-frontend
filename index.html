@@ -65,7 +65,7 @@
           <span class="label" id="divideCtx">MARQUIS</span>
           <span class="divide-rule" aria-hidden="true"></span>
           <span class="label voice-ind" id="voiceInd" data-voice-state="off" role="status" aria-live="polite" title="Which voice Alfred is using">Voice · starting</span>
-          <span class="label" id="divideCount">00</span>
+          <button type="button" class="label divide-count" id="divideCount" aria-expanded="false" aria-controls="history" title="Earlier exchanges" disabled>00</button>
         </div>
         <div class="intent-row">
           <label class="sr-only" for="intent">State your intent</label>
@@ -76,6 +76,11 @@
       </div>
       <p class="sr-only" id="butlerStatus" aria-live="polite"></p>
     </div>
+    <aside class="history glass" id="history" aria-label="Earlier exchanges" hidden>
+      <div class="history-head"><span class="label">Earlier</span><button type="button" class="act" id="historyClose">Close ×</button></div>
+      <div class="history-list" id="historyList"></div>
+      <button type="button" class="act history-more" id="historyMore" hidden>Earlier still ›</button>
+    </aside>
   </section>
 
   <!-- ============ AGENTS: the four at work ============ -->

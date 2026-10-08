@@ -122,3 +122,40 @@ body[data-workspace] .intent{ text-align:left; padding-left:44px; padding-right:
   }
   body[data-workspace] .presence{ width:52px; height:52px; margin:-4px 0 0 -6px; }
 }
+
+/* ---------- the count in the divide line, and the exchanges before it ---------- */
+.divide-count{ padding:0; margin:0; background:none; border:0; cursor:pointer; }   /* type comes from .label, so it reads as before */
+.divide-count:disabled{ cursor:default; color:var(--ink-3); }
+.divide-count:not(:disabled){ color:var(--ink-2); border-bottom:1px solid var(--rule-strong); }
+.divide-count:not(:disabled):hover, .divide-count[aria-expanded="true"]{ color:var(--ink); }
+.divide-count:focus-visible{ outline:1px solid var(--rule-strong); outline-offset:4px; }
+
+.history.glass{
+  position:absolute; z-index:6; left:calc(var(--strip) + 24px); top:28px; bottom:22px;
+  width:min(400px, 36vw); display:flex; flex-direction:column; padding:18px 20px 14px;
+  animation:dock-in 500ms var(--ease);
+}
+.history[hidden]{ display:none; }
+.history-head{ display:flex; align-items:center; justify-content:space-between; padding-bottom:12px; border-bottom:1px solid var(--rule); }
+.history-list{ flex:1; min-height:0; overflow-y:auto; scrollbar-width:thin; padding-top:4px; }
+.hx{ padding:14px 0; border-bottom:1px solid var(--rule); }
+.hx-when{ display:block; margin-bottom:6px; }
+.hx-q{ font-size:var(--fs-small); line-height:1.6; color:var(--ink-3); overflow-wrap:anywhere; }
+.hx-q::before{ content:"— "; }
+.hx-a{
+  margin-top:6px; font-size:13.5px; line-height:1.65; color:var(--ink-2); cursor:pointer; white-space:pre-line; overflow-wrap:anywhere;
+  display:-webkit-box; -webkit-line-clamp:4; -webkit-box-orient:vertical; overflow:hidden;
+}
+.hx-a.is-open{ display:block; -webkit-line-clamp:unset; overflow:visible; }
+.hx-chips{ display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
+.hx-chips:empty{ display:none; }
+.hx-chip{
+  padding:3px 9px; border:1px solid var(--rule-strong); border-radius:99px; background:none; cursor:pointer;
+  font-family:var(--mono); font-size:var(--fs-label); text-transform:uppercase; letter-spacing:var(--track-label); color:var(--ink-2);
+}
+.hx-chip:hover{ color:var(--ink); }
+.hx-empty{ padding:18px 0; }
+.history-more{ align-self:flex-start; margin-top:10px; }
+@media (max-width:900px){
+  .history.glass{ left:calc(var(--strip) + 10px); right:10px; top:10px; bottom:calc(46vh + 10px); width:auto; }
+}

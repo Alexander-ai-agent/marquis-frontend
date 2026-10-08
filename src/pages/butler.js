@@ -11,6 +11,7 @@
 import { qs, escapeHtml } from '../lib/dom.js';
 import { skipMovement } from '../lib/motion.js';
 import { sendConversationMessage, designCanvas, buildSite } from '../lib/api.js';
+import { fetchHistory, persistenceOn } from '../lib/canvas-api.js';
 import { state, setMode } from '../lib/state.js';
 import { setFieldState, fieldDeliver } from '../lib/field.js';
 import { typewrite, narrate, silence, PARA } from '../lib/voice.js';
@@ -18,8 +19,14 @@ import { createOrb } from '../lib/orb.js';
 import { wakeShell } from '../lib/router.js';
 import * as workspace from './workspace.js';
 
-const history = [];
-let exchanges = 0;
+// Alfred's memory is the server's: every exchange is stored there, the model
+// reads it back from the database, and this page only keeps what is on screen.
+// `shown` is the exchange in the main view; `earlier` are the ones before it,
+// listed in the history drawer (loaded when it is first opened, then paged).
+const HISTORY_PAGE = 20;
+let exchanges = 0;         // the count in the divide line (all stored exchanges)
+let shown = null;          // { id, you, alfred, sources }
+const earlier = { list: [], loaded: false, hasMore: false, before: null, busy: false };
 let awaiting = false;      // a request is in flight
 let opened = false;
 let baseContext = 'MARQUIS';
@@ -99,7 +106,107 @@ function interrupt() {
 }
 
 function setContext(label) { el.ctx.textContent = label || baseContext; }
-function bumpCount() { exchanges += 1; el.count.textContent = String(exchanges).padStart(2, '0'); }
+function paintCount() {
+  el.count.textContent = String(exchanges).padStart(2, '0');
+  el.count.disabled = !persistenceOn() || exchanges < 2;     // nothing earlier to open
+}
+function bumpCount() { exchanges += 1; paintCount(); }
+
+/* ---------------- the exchange on screen, and the ones before it ---------------- */
+
+const paragraphs = (text) => String(text || '').split('\n\n').map((p) => p.trim()).filter(Boolean);
+
+/** Alfred's words, set down whole (no typing, no voice): what a restored exchange shows. */
+function setDown(text, sources) {
+  el.subtitle.innerHTML = '';
+  paragraphs(text).forEach((para, i) => {
+    if (i) el.subtitle.insertAdjacentHTML('beforeend', '<span class="para-gap" aria-hidden="true"></span>');
+    const span = document.createElement('span');
+    span.className = 'line';
+    el.subtitle.appendChild(span);
+    decorate(span, para, sources);
+  });
+  el.subtitle.scrollTop = 0;
+}
+
+/** The latest stored exchange becomes the main view, in the same compact
+ * composition as a live one. Called once at load, before `arrive`. */
+export function restoreHistory(page) {
+  exchanges = Number(page?.total) || 0;
+  const latest = page?.exchanges?.[0];
+  if (latest?.you) {
+    shown = { id: latest.id, you: latest.you.content, alfred: latest.alfred?.content || '', sources: latest.sources || [] };
+    earlier.hasMore = exchanges > 1;
+  }
+}
+
+/** A new exchange takes the main view; the one it replaces joins the drawer. */
+function showExchange(next) {
+  if (shown?.alfred) {
+    earlier.list = [shown, ...earlier.list.filter((x) => x.id !== shown.id)];
+  }
+  shown = next;
+  if (!drawer.hidden) paintDrawer();
+}
+
+const drawer = { hidden: true };
+
+function creationChips(id) {
+  return workspace.creationsOf(id).map((c) => `<button type="button" class="hx-chip" data-n="${c.n}">${escapeHtml(c.kind)}</button>`).join('');
+}
+
+function exchangeHtml(x) {
+  const when = x.when ? `<time class="label hx-when">${escapeHtml(new Date(x.when).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }))}</time>` : '';
+  return `<article class="hx" data-id="${escapeHtml(x.id)}">${when}
+    <p class="hx-q">${escapeHtml(x.you)}</p>
+    <p class="hx-a" tabindex="0" title="Click to read it all">${escapeHtml(x.alfred || 'No answer was kept.')}</p>
+    <div class="hx-chips">${creationChips(x.id)}</div></article>`;
+}
+
+function paintDrawer() {
+  const list = qs('#historyList');
+  list.innerHTML = earlier.list.length
+    ? earlier.list.map(exchangeHtml).join('')
+    : `<p class="label hx-empty">${earlier.loaded ? 'Nothing earlier.' : 'Opening.'}</p>`;
+  const more = qs('#historyMore');
+  more.hidden = !earlier.hasMore;
+  more.disabled = earlier.busy;
+}
+
+/** Fetch a page of earlier exchanges (never the one on screen). */
+async function loadEarlier() {
+  if (earlier.busy || !persistenceOn()) return;
+  earlier.busy = true;
+  paintDrawer();
+  try {
+    const page = await fetchHistory({ limit: HISTORY_PAGE, before: earlier.loaded ? earlier.before : undefined });
+    const seen = new Set([shown?.id, ...earlier.list.map((x) => x.id)]);
+    const fresh = page.exchanges.filter((x) => x.you && !seen.has(x.id))
+      .map((x) => ({ id: x.id, you: x.you.content, alfred: x.alfred?.content || '', sources: x.sources || [], when: x.you.created_at }));
+    earlier.list = [...earlier.list, ...fresh];
+    earlier.before = page.next_before;
+    earlier.hasMore = Boolean(page.has_more);
+    earlier.loaded = true;
+  } catch (e) {
+    console.warn('[butler] earlier exchanges did not load:', e);
+    qs('#historyList').insertAdjacentHTML('beforeend', '<p class="label hx-empty">That did not load. Try again.</p>');
+  }
+  earlier.busy = false;
+  paintDrawer();
+}
+
+function toggleDrawer(force) {
+  const on = force ?? drawer.hidden;
+  drawer.hidden = !on;
+  const aside = qs('#history');
+  aside.hidden = !on;
+  el.count.setAttribute('aria-expanded', String(on));
+  if (on) document.body.dataset.history = 'true'; else delete document.body.dataset.history;
+  if (!on) return;
+  paintDrawer();
+  if (!earlier.loaded) loadEarlier();
+  qs('#historyClose').focus({ preventScroll: true });
+}
 
 function open() {
   if (opened) return;
@@ -111,13 +218,21 @@ function open() {
 /** First arrival each session: presence, one line, then the input. */
 export async function arrive(firstLine, context) {
   baseContext = context || baseContext;
-  setContext();
+  setContext(workspace.label());
   el.subtitle.textContent = '';
+  paintCount();
   const safety = setTimeout(open, 9000); // never leave the input hidden
   await new Promise((r) => setTimeout(r, skipMovement() ? 0 : 1100));
-  await enqueue(firstLine);
+  if (shown?.alfred) {
+    // Back after a refresh: the last exchange is the main view, as it was left.
+    el.you.textContent = shown.you; el.you.hidden = false;
+    setDown(shown.alfred, shown.sources);
+  } else {
+    await enqueue(firstLine);
+  }
   clearTimeout(safety);
   open();
+  workspace.syncField();
 }
 
 export function setButlerContext(context) { baseContext = context || baseContext; if (!workspace.isOpen()) setContext(); }
@@ -143,45 +258,48 @@ async function send(text) {
     await new Promise((r) => setTimeout(r, 900));
     reply = { text: local.text, label: local.label };
   } else {
-    history.push({ role: 'user', content: text });
-    try { reply = await sendConversationMessage(state.token, text, history.slice(0, -1)); } catch (_) { reply = null; }
+    // The server reads Alfred's memory from its own records; only the message goes.
+    try { reply = await sendConversationMessage(state.token, text); } catch (_) { reply = null; }
   }
 
   awaiting = false;
   fieldDeliver();
+  workspace.syncField();            // anything already on the canvas keeps the room dimmed
   el.status.textContent = '';
   el.input.disabled = false;
   if (document.activeElement === document.body || !document.activeElement) el.input.focus({ preventScroll: true });
 
   if (!reply) {
     // Honest failure, in voice; never invent an answer.
-    history.pop();
     enqueue("I can't reach my notes at the moment. Nothing you said is lost.");
     return;
   }
-  if (!local) history.push({ role: 'assistant', content: reply.text });
 
   const sources = reply.sources || [];
+  const item = reply.items?.[0];
+  // A new creation is added to the canvas; nothing already there is closed.
   if (reply.workspace) workspace.open(reply.workspace.type, reply.workspace);
-  else if (reply.design?.brief) draft(reply.design.brief);
-  else if (reply.build?.brief) draft(reply.build.brief, { building: true });
-  else if (reply.visualization) workspace.openViz(reply.visualization, { sources });
-  else if (sources.length) workspace.openSources(sources);
-  else if (!local && workspace.kind() === 'chart') workspace.close();
+  else if (reply.design?.brief) draft(reply.design.brief, { exchangeId: reply.exchangeId });
+  else if (reply.build?.brief) draft(reply.build.brief, { building: true, exchangeId: reply.exchangeId });
+  else if (reply.visualization) workspace.openViz(reply.visualization, { sources, item });
+  else if (sources.length) workspace.openSources(sources, { item });
   setContext(reply.label || workspace.label());
 
-  bumpCount();
+  if (!local) {
+    // The exchange is stored: it becomes the main view and the count follows the server's.
+    showExchange({ id: reply.exchangeId || `local-${Date.now()}`, you: text, alfred: reply.text, sources });
+    bumpCount();
+  }
   enqueue(reply.text, { sources });
 }
 
 /** Hand a brief to the designer (or, building, to the builder); the
- * drafting table shows until the work lands. */
-async function draft(brief, { building = false } = {}) {
+ * drafting table shows until the work lands, and the work takes its place. */
+async function draft(brief, { building = false, exchangeId = null } = {}) {
   workspace.openDrafting(brief, { building });
   try {
-    const result = await (building ? buildSite : designCanvas)(state.token, brief);
-    if (!workspace.isDrafting(brief)) return; // the founder has moved on
-    workspace.openViz(result.visualization);
+    const result = await (building ? buildSite : designCanvas)(state.token, brief, exchangeId);
+    workspace.landDrafting(brief, result.visualization, { item: result.item });
     setContext(workspace.label());
     if (result.text) enqueue(result.text);
   } catch (e) {
@@ -259,6 +377,20 @@ export function initButler() {
   });
   document.addEventListener('marquis:remark', (e) => remark(e.detail || {}));
   document.addEventListener('marquis:workspace-closed', () => setContext());
+
+  // The count in the divide line opens the earlier exchanges, a short list
+  // beside Alfred rather than a tall block under him.
+  el.count.addEventListener('click', () => toggleDrawer());
+  qs('#historyClose').addEventListener('click', () => { toggleDrawer(false); el.count.focus({ preventScroll: true }); });
+  qs('#historyMore').addEventListener('click', loadEarlier);
+  qs('#historyList').addEventListener('click', (e) => {
+    const chip = e.target.closest('.hx-chip');
+    if (chip) { workspace.focusCreation(Number(chip.dataset.n)); toggleDrawer(false); return; }
+    e.target.closest('.hx-a')?.classList.toggle('is-open');
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !drawer.hidden && !e.defaultPrevented) { toggleDrawer(false); el.count.focus({ preventScroll: true }); }
+  });
 
   // You draw first: open the pen layer; Alfred reads it when handed over.
   qs('#drawBtn').addEventListener('click', () => {

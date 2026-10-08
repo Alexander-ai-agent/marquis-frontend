@@ -109,11 +109,11 @@ export function signup(name, email, password) {
  * Canvas payload (null on ordinary turns). Throws on any failure; the
  * caller shows an honest in-character notice, never a made-up reply.
  */
-async function realConversation(token, message, conversationHistory) {
+async function realConversation(token, message) {
   const res = await fetchWithTimeout(`${API_BASE}/conversation`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ message, conversation_history: conversationHistory, reply_style: state.replyStyle }),
+    body: JSON.stringify({ message, reply_style: state.replyStyle }),   // Alfred's memory is the server's: it reads the database, not this page
   }, CONVERSATION_TIMEOUT_MS);
   const data = await res.json().catch(() => ({}));
   if (!res.ok || !data.butler_response) throw new Error(data.error || 'No reply');
@@ -126,6 +126,8 @@ async function realConversation(token, message, conversationHistory) {
     sources: Array.isArray(data.sources) ? data.sources : [],
     design: data.design && typeof data.design.brief === 'string' ? data.design : null,
     build: data.build && typeof data.build.brief === 'string' ? data.build : null,
+    exchangeId: data.exchange_id || null,
+    items: Array.isArray(data.canvas_items) ? data.canvas_items : [],
   };
 }
 
@@ -193,8 +195,8 @@ async function demoConversation(message) {
   return { text: reply, visualization: null };
 }
 
-export function sendConversationMessage(token, message, conversationHistory) {
-  return DEMO_MODE ? demoConversation(message) : realConversation(token, message, conversationHistory);
+export function sendConversationMessage(token, message) {
+  return DEMO_MODE ? demoConversation(message) : realConversation(token, message);
 }
 
 /* ---------------- Canvas ---------------- */
@@ -202,18 +204,18 @@ export function sendConversationMessage(token, message, conversationHistory) {
 /** The user drew first: send the sketch, get { text, visualization } back.
  * Demo mode reads the strokes locally (each stroke cluster becomes a
  * region), so the result still reflects what was actually drawn. */
-export async function interpretDrawing(token, pngDataUrl, hint, strokes) {
+export async function interpretDrawing(token, pngDataUrl, hint, strokes, exchangeId = null) {
   if (DEMO_MODE) {
     await new Promise((r) => setTimeout(r, CONVO_LATENCY_MS));
     return demoInterpret(strokes);
   }
   const res = await fetchWithTimeout(`${API_BASE}/canvas/interpret`, {
     method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ image: pngDataUrl, hint }),
+    body: JSON.stringify({ image: pngDataUrl, hint, exchange_id: exchangeId }),
   }, 45000);
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || 'I could not read that drawing.');
-  return { text: data.butler_response, visualization: data.visualization };
+  return { text: data.butler_response, visualization: data.visualization, item: data.item || null };
 }
 
 function demoInterpret(strokes) {
@@ -255,31 +257,31 @@ export async function searchImages(token, query) {
 const DESIGN_TIMEOUT_MS = 150000; // a finished composition takes the designer a while
 
 /** The designer realises a brief Alfred handed over (backend /canvas/design). */
-export async function designCanvas(token, brief) {
+export async function designCanvas(token, brief, exchangeId = null) {
   if (DEMO_MODE) throw new Error('The designer works with the live service only.');
   const res = await fetchWithTimeout(`${API_BASE}/canvas/design`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ brief }),
+    body: JSON.stringify({ brief, exchange_id: exchangeId }),
   }, DESIGN_TIMEOUT_MS);
   const data = await res.json().catch(() => ({}));
   if (!res.ok || !data.visualization) throw new Error(data.error || 'The designer is unavailable right now.');
-  return { text: data.butler_response || '', visualization: data.visualization };
+  return { text: data.butler_response || '', visualization: data.visualization, item: data.item || null };
 }
 
 const SITE_TIMEOUT_MS = 175000; // a whole page takes the builder a while
 
 /** The builder makes a working page from a brief (backend /canvas/site). */
-export async function buildSite(token, brief) {
+export async function buildSite(token, brief, exchangeId = null) {
   if (DEMO_MODE) throw new Error('The builder works with the live service only.');
   const res = await fetchWithTimeout(`${API_BASE}/canvas/site`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ brief }),
+    body: JSON.stringify({ brief, exchange_id: exchangeId }),
   }, SITE_TIMEOUT_MS);
   const data = await res.json().catch(() => ({}));
   if (!res.ok || !data.visualization?.html) throw new Error(data.error || 'The builder is unavailable right now.');
-  return { text: data.butler_response || '', visualization: data.visualization };
+  return { text: data.butler_response || '', visualization: data.visualization, item: data.item || null };
 }
 
 /** Alfred's line as speech (backend /voice, Fish Audio). Returns an MP3

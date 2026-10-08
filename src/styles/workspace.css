@@ -232,3 +232,22 @@
   .frame{ width:56px; }
   .region-note{ display:none; }
 }
+
+/* ---------- the stack: the newest creation open, the rest as headers ---------- */
+/* With one panel these rules add nothing: the open panel fills the room and
+   looks as the single workspace always did. */
+.ws-stack{ flex:1; min-height:0; display:flex; flex-direction:column; overflow-y:auto; scrollbar-width:none; }
+.ws-stack::-webkit-scrollbar{ display:none; }
+.ws-panel{ display:flex; flex-direction:column; min-height:0; }
+.ws-panel[data-state="open"]{ flex:1 1 0; min-height:min(360px, 100%); }
+.ws-panel[data-state="collapsed"]{ flex:0 0 auto; }
+.ws-panel + .ws-panel[data-state="open"]{ margin-top:10px; }
+.ws-panel[data-state="collapsed"] .ws-head{ padding:12px 0 11px; }
+.ws-toggle{
+  display:flex; align-items:center; gap:12px; flex:1; min-width:0; padding:0;
+  background:none; border:0; color:inherit; font:inherit; text-align:left; cursor:pointer;
+}
+.ws-toggle:hover .ws-title, .ws-toggle:focus-visible .ws-title{ color:var(--ink); }
+.ws-toggle:focus-visible{ outline:1px solid var(--rule-strong); outline-offset:4px; }
+.ws-expand{ margin-left:auto; padding-right:20px; color:var(--ink-3); white-space:nowrap; }
+.ws-more-row{ flex:0 0 auto; padding:10px 0 4px; }

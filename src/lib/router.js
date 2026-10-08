@@ -59,7 +59,7 @@ export function initRouter() {
       const here = currentPage();
       if (here !== 'butler') { returnTo = here; goToPage('butler'); }
       setTimeout(() => qs('#intent')?.focus(), here === 'butler' ? 0 : 260);
-    } else if (e.key === 'Escape' && returnTo && currentPage() === 'butler' && !document.body.dataset.workspace) {
+    } else if (e.key === 'Escape' && returnTo && currentPage() === 'butler' && !document.body.dataset.pen && !document.body.dataset.history && !e.defaultPrevented) {
       qs('#intent')?.blur();
       const back = returnTo; returnTo = null;
       goToPage(back);
