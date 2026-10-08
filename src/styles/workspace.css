@@ -251,3 +251,4 @@
 .ws-toggle:focus-visible{ outline:1px solid var(--rule-strong); outline-offset:4px; }
 .ws-expand{ margin-left:auto; padding-right:20px; color:var(--ink-3); white-space:nowrap; }
 .ws-more-row{ flex:0 0 auto; padding:10px 0 4px; }
+.ws-panel[data-state="open"] + .ws-panel{ margin-top:10px; }   /* headers below the open plane don't touch its hint line */
